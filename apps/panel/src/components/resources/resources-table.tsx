@@ -8,6 +8,7 @@ import { TextSwap } from "@/components/motion-primitives"
 import type { ResourceView } from "@/components/resources-store"
 import { formatCpu, formatMemory } from "@/lib/resources"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { RESOURCE_STATUS, type FolderStats } from "./status"
 
@@ -79,13 +80,13 @@ export function ResourcesTable({
         <tr className="border-b border-border/70 text-muted-foreground">
           <SortHeader column="name" className="pr-2 pl-4" sort={sort} onSortChange={onSortChange} />
           <th scope="col" className="h-9 px-2 text-left font-normal">
-            State
+            {t("State")}
           </th>
           {METRICS.map((metric) => (
             <SortHeader key={metric} column={metric} align="right" className={cn("px-2", columnClass(metric))} sort={sort} onSortChange={onSortChange} />
           ))}
           <th scope="col" className="h-9 pr-4 pl-2 text-right font-normal">
-            Issues
+            {t("Issues")}
           </th>
         </tr>
       </thead>
@@ -102,6 +103,7 @@ export function ResourcesTable({
                   <th scope="rowgroup" className="h-8 py-0 pr-2 pl-4 text-left font-normal">
                     <span className="flex items-center gap-2">
                       <span className="truncate">{resource.folder}</span>
+                      {resource.folder.startsWith("[") ? (
                       <button
                         type="button"
                         onClick={() => onEnsureFolder(resource.folder)}
@@ -110,8 +112,9 @@ export function ResourcesTable({
                         className="press inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 font-sans outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
                       >
                         <HugeiconsIcon icon={RefreshIcon} strokeWidth={1.75} className="size-3" />
-                        Ensure
+                        {t("Ensure")}
                       </button>
+                      ) : null}
                     </span>
                   </th>
                   <td className="px-2 whitespace-nowrap tabular-nums">{`${stats.started} of ${stats.total}`}</td>
@@ -151,7 +154,7 @@ export function ResourcesTable({
                 <td className="px-2 py-2 whitespace-nowrap">
                   <span className={cn("inline-flex items-center gap-1.5", status.text)}>
                     <span className={cn("size-1.5 shrink-0 rounded-full", status.dot)} aria-hidden />
-                    <TextSwap text={status.label} />
+                    <TextSwap text={t(status.label)} />
                   </span>
                 </td>
                 {METRICS.map((metric) => (

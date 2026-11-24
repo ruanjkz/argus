@@ -11,6 +11,7 @@ import { BAN_DURATIONS } from "@/lib/bans"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { useFieldError } from "@/lib/use-field-error"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 export type PlayerAction = "warn" | "kick" | "ban" | "message"
 
@@ -25,25 +26,25 @@ const COPY: Record<PlayerAction, { title: string; description: (player: PlayerVi
   warn: {
     title: "Warn",
     description: (player) => `${player.name} sees this on screen and it stays in their history.`,
-    confirm: "Send warning",
+    confirm: t("Send warning"),
     field: "Reason",
   },
   kick: {
     title: "Kick",
     description: (player) => `${player.name} is disconnected and sees the reason. They can rejoin right away.`,
-    confirm: "Kick player",
+    confirm: t("Kick player"),
     field: "Reason",
   },
   ban: {
     title: "Ban",
     description: (player) => `${player.name} is disconnected and blocked by every identifier and hardware token on record.`,
-    confirm: "Ban player",
+    confirm: t("Ban player"),
     field: "Reason",
   },
   message: {
     title: "Message",
     description: (player) => `Shows a private message on ${player.name}'s screen.`,
-    confirm: "Send message",
+    confirm: t("Send message"),
     field: "Message",
   },
 }
@@ -116,7 +117,7 @@ function ActionForm({ action, player, onClose }: { action: PlayerAction; player:
             autoFocus
             aria-describedby="player-action-error"
             className="block w-full resize-none bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
-            placeholder={action === "message" ? "Write the message" : "Why are you doing this?"}
+            placeholder={action === "message" ? t("Write the message") : t("Why are you doing this?")}
           />
         </div>
         <p id="player-action-error" className="t-error-msg text-xs text-destructive" aria-live="polite">
@@ -143,7 +144,7 @@ function ActionForm({ action, player, onClose }: { action: PlayerAction; player:
         <div className="grid gap-3">
           <div className="grid gap-1.5">
             <span id="ban-duration-label" className="text-[11px] text-muted-foreground">
-              Duration
+              {t("Duration")}
             </span>
             <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-labelledby="ban-duration-label">
               {BAN_DURATIONS.map((value) => (
@@ -185,7 +186,7 @@ function ActionForm({ action, player, onClose }: { action: PlayerAction; player:
       <DialogFooter className="gap-2">
         <DialogClose asChild>
           <Button type="button" variant="outline" className="h-8 rounded-lg px-3">
-            Cancel
+            {t("Cancel")}
           </Button>
         </DialogClose>
         <Button

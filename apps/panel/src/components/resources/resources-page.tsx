@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { ResourceDetail } from "./resource-detail"
 import { ResourcesTable, type ResourceSort, type ResourceSortKey } from "./resources-table"
@@ -123,16 +124,16 @@ export function ResourcesPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="border-b border-border/70 px-5 py-3">
-        <h1 className="truncate text-sm font-semibold">Resources</h1>
+        <h1 className="truncate text-sm font-semibold">{t("Resources")}</h1>
         <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-          {`${counts.all} resources  ${counts.started} started  ${counts.stopped} stopped  ${counts.problems} with problems`}
+          {t(`${counts.all} resources  ${counts.started} started  ${counts.stopped} stopped  ${counts.problems} with problems`)}
         </p>
       </header>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col lg:border-r lg:border-border/70">
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
-            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Filter resources">
+            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Filter resources")}>
               {filters.map(([value, label, count]) => (
                 <button
                   key={value}
@@ -147,12 +148,12 @@ export function ResourcesPage() {
                     filter === value ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {label}
+                  {t(label)}
                   <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span>
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Order resources">
+            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Order resources")}>
               {ORDERS.map(([key, label]) => (
                 <button
                   key={key}
@@ -167,7 +168,7 @@ export function ResourcesPage() {
                     sort.key === key ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -180,8 +181,8 @@ export function ResourcesPage() {
                   onKeyDown={(event) => {
                     if (event.key === "Escape") setQuery("")
                   }}
-                  placeholder="Name or folder"
-                  aria-label="Search resources"
+                  placeholder={t("Name or folder")}
+                  aria-label={t("Search resources")}
                   spellCheck={false}
                   className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                 />
@@ -193,7 +194,7 @@ export function ResourcesPage() {
                     type="button"
                     onClick={refresh}
                     disabled={!serverOnline}
-                    aria-label="Rescan the resources folder"
+                    aria-label={t("Rescan the resources folder")}
                     className="press grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
                   >
                     <IconSwap
@@ -209,7 +210,7 @@ export function ResourcesPage() {
                     />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Rescan the resources folder</TooltipContent>
+                <TooltipContent>{t("Rescan the resources folder")}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -222,7 +223,7 @@ export function ResourcesPage() {
             {visible.length === 0 ? (
               <div className="px-6 pt-[12vh] text-center">
                 <p className="text-xs wrap-anywhere text-muted-foreground">
-                  {deferredQuery ? `No resource matches “${query.trim()}”.` : "No resources in this list."}
+                  {deferredQuery ? `No resource matches “${query.trim()}”.` : t("No resources in this list.")}
                 </p>
               </div>
             ) : (
@@ -242,11 +243,11 @@ export function ResourcesPage() {
         </div>
 
         {desktop ? (
-          <aside aria-label="Resource details" className="hidden w-[25rem] shrink-0 lg:block">
+          <aside aria-label={t("Resource details")} className="hidden w-[25rem] shrink-0 lg:block">
             {selected ? (
               <ResourceDetail resource={selected} onSelect={select} onEnsureFolder={requestEnsure} />
             ) : (
-              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">Pick a resource to see its details.</div>
+              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">{t("Pick a resource to see its details.")}</div>
             )}
           </aside>
         ) : null}
@@ -274,7 +275,7 @@ export function ResourcesPage() {
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -284,7 +285,7 @@ export function ResourcesPage() {
               }}
               className="h-8 rounded-lg px-3"
             >
-              Ensure folder
+              {t("Ensure folder")}
             </Button>
           </DialogFooter>
         </DialogContent>

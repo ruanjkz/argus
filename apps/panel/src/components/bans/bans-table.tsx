@@ -7,6 +7,7 @@ import { ArrowDown01Icon, ArrowUp01Icon } from "@hugeicons/core-free-icons"
 import type { BanRecord } from "@/lib/bans"
 import { formatAgo } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { BAN_STATUS, expiryLabel } from "./ban-status"
 
@@ -81,10 +82,10 @@ export function BansTable({
         <tr className="border-b border-border/70 text-muted-foreground">
           {header("player", "pl-4 pr-2", "left")}
           <th scope="col" className="hidden h-9 px-2 text-left font-normal md:table-cell">
-            Reason
+            {t("Reason")}
           </th>
           <th scope="col" className="hidden h-9 px-2 text-left font-normal sm:table-cell lg:hidden xl:table-cell">
-            By
+            {t("By")}
           </th>
           {header("issued", "px-2", "right")}
           {header("expires", "pr-4 pl-2", "right")}

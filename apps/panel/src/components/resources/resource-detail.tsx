@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { formatAgo } from "@/lib/mock"
 import { formatCpu, formatMemory, TICK_BUDGET_MS } from "@/lib/resources"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { isBusy, RESOURCE_STATUS } from "./status"
 
@@ -68,7 +69,7 @@ export function ResourceDetail({
             <h2 className="truncate font-mono text-sm font-medium">{resource.name}</h2>
             <p className={cn("mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px]", status.text)}>
               <span className={cn("size-1.5 shrink-0 rounded-full", status.dot)} />
-              <TextSwap text={status.label} />
+              <TextSwap text={t(status.label)} />
             </p>
           </div>
         </div>
@@ -82,7 +83,7 @@ export function ResourceDetail({
               className={cn(ACTION_BUTTON, "border border-border hover:bg-muted")}
             >
               <HugeiconsIcon icon={RefreshIcon} strokeWidth={1.75} className="size-3.5" />
-              Restart
+              {t("Restart")}
             </button>
           ) : (
             <button
@@ -92,7 +93,7 @@ export function ResourceDetail({
               className={cn(ACTION_BUTTON, "bg-primary text-primary-foreground hover:bg-primary/85")}
             >
               <HugeiconsIcon icon={PlayIcon} strokeWidth={1.75} className="size-3.5" />
-              {resource.status === "failed" ? "Try again" : "Start"}
+              {resource.status === "failed" ? t("Try again") : "Start"}
             </button>
           )}
           {resource.required ? (
@@ -101,11 +102,11 @@ export function ResourceDetail({
                 <span tabIndex={0} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <button type="button" disabled className={cn(ACTION_BUTTON, "text-destructive")}>
                     <HugeiconsIcon icon={StopIcon} strokeWidth={1.75} className="size-3.5" />
-                    Stop
+                    {t("Stop")}
                   </button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Argus needs this resource to watch the server</TooltipContent>
+              <TooltipContent>{t("Argus needs this resource to watch the server")}</TooltipContent>
             </Tooltip>
           ) : (
             <button
@@ -115,7 +116,7 @@ export function ResourceDetail({
               className={cn(ACTION_BUTTON, "text-destructive hover:bg-destructive/10")}
             >
               <HugeiconsIcon icon={StopIcon} strokeWidth={1.75} className="size-3.5" />
-              Stop
+              {t("Stop")}
             </button>
           )}
         </div>
@@ -125,7 +126,7 @@ export function ResourceDetail({
         <div className="flex flex-col gap-6">
           {resource.status === "failed" && resource.failure ? (
             <div className="rounded-xl bg-destructive/10 px-3 py-2.5 text-xs">
-              <p className="font-medium text-destructive">Failed to start</p>
+              <p className="font-medium text-destructive">{t("Failed to start")}</p>
               <p className="mt-1 wrap-break-word text-foreground/90">{resource.failure}</p>
               {resource.missingDependencies.length ? (
                 <p className="mt-1.5 text-muted-foreground">
@@ -136,7 +137,7 @@ export function ResourceDetail({
           ) : null}
 
           {incidents.length ? (
-            <Section title="Problems" meta={`${incidents.length} open`}>
+            <Section title={t("Problems")} meta={`${incidents.length} open`}>
               <ul className="flex flex-col gap-0.5">
                 {incidents.map((incident) => (
                   <li key={incident.id} className="flex gap-3 rounded-lg px-2 py-2">
@@ -166,7 +167,7 @@ export function ResourceDetail({
             </Section>
           ) : null}
 
-          <Section title="Performance" meta={running && resource.liveCpuMs >= 0 ? `${share.toFixed(1)}% of the ${TICK_BUDGET_MS} ms tick` : undefined}>
+          <Section title={t("Performance")} meta={running && resource.liveCpuMs >= 0 ? `${share.toFixed(1)}% of the ${TICK_BUDGET_MS} ms tick` : undefined}>
             <DetailRows
               rows={[
                 ["Server tick", running ? formatCpu(resource.liveCpuMs) : "—"],
@@ -176,18 +177,18 @@ export function ResourceDetail({
             />
           </Section>
 
-          <Section title="Depends on" meta={`${resource.dependencies.length}`}>
-            <ResourceLinks names={resource.dependencies} empty="This resource has no dependencies." onSelect={onSelect} />
+          <Section title={t("Depends on")} meta={`${resource.dependencies.length}`}>
+            <ResourceLinks names={resource.dependencies} empty={t("This resource has no dependencies.")} onSelect={onSelect} />
           </Section>
 
-          <Section title="Used by" meta={`${resource.dependents.length}`}>
-            <ResourceLinks names={resource.dependents} empty="No other resource depends on this one." onSelect={onSelect} />
+          <Section title={t("Used by")} meta={`${resource.dependents.length}`}>
+            <ResourceLinks names={resource.dependents} empty={t("No other resource depends on this one.")} onSelect={onSelect} />
           </Section>
 
-          <Section title="Folder" meta={resource.folder}>
+          <Section title={t("Folder")} meta={resource.folder}>
             <div className="flex items-center justify-between gap-3 px-2">
               <p className="min-w-0 text-xs text-muted-foreground">
-                {folderSize === 1 ? "Only resource in this folder." : `Shares the folder with ${folderSize - 1} other ${folderSize === 2 ? "resource" : "resources"}.`}
+                {folderSize === 1 ? t("Only resource in this folder.") : `Shares the folder with ${folderSize - 1} other ${folderSize === 2 ? "resource" : "resources"}.`}
               </p>
               <button
                 type="button"
@@ -201,7 +202,7 @@ export function ResourceDetail({
             </div>
           </Section>
 
-          <Section title="Manifest">
+          <Section title={t("Manifest")}>
             <DetailRows
               rows={[
                 ["Version", resource.version],
@@ -225,7 +226,7 @@ export function ResourceDetail({
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -235,7 +236,7 @@ export function ResourceDetail({
               }}
               className="h-8 rounded-lg bg-destructive px-3 text-white hover:bg-destructive/85 dark:text-white"
             >
-              Stop resource
+              {t("Stop resource")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -270,7 +271,7 @@ function ResourceLinks({ names, empty, onSelect }: { names: string[]; empty: str
             >
               <span className={cn("size-1.5 shrink-0 rounded-full", status.dot)} />
               <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground/90">{name}</span>
-              <span className={cn("text-[11px]", status.text)}>{status.label}</span>
+              <span className={cn("text-[11px]", status.text)}>{t(status.label)}</span>
             </button>
           </li>
         )

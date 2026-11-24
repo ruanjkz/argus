@@ -8,6 +8,7 @@ import type { PlayerView } from "@/components/players-store"
 import { formatAgo, formatDuration } from "@/lib/mock"
 import { formatPlaytime } from "@/lib/players"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 export type SortKey = "name" | "ping" | "seen" | "playtime"
 
@@ -81,7 +82,7 @@ export function PlayersTable({
             )
           })}
           <th scope="col" className="h-9 pr-4 pl-2 text-right font-normal">
-            Flags
+            {t("Flags")}
           </th>
         </tr>
       </thead>

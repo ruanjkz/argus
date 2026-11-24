@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { PlayerDetail } from "./player-detail"
 import { PlayersTable, type SortState } from "./players-table"
@@ -101,16 +102,16 @@ export function PlayersPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="border-b border-border/70 px-5 py-3">
-        <h1 className="truncate text-sm font-semibold">Players</h1>
+        <h1 className="truncate text-sm font-semibold">{t("Players")}</h1>
         <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-          {`${counts.online} online  ${counts.all} known  ${counts.flagged} flagged  ${counts.banned} banned`}
+          {t(`${counts.online} online  ${counts.all} known  ${counts.flagged} flagged  ${counts.banned} banned`)}
         </p>
       </header>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col lg:border-r lg:border-border/70">
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
-            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Filter players">
+            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Filter players")}>
               {filters.map(([value, label, count]) => (
                 <button
                   key={value}
@@ -125,7 +126,7 @@ export function PlayersPage() {
                     filter === value ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {label}
+                  {t(label)}
                   <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span>
                 </button>
               ))}
@@ -138,8 +139,8 @@ export function PlayersPage() {
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setQuery("")
                 }}
-                placeholder="Name, server id or identifier"
-                aria-label="Search players"
+                placeholder={t("Name, server id or identifier")}
+                aria-label={t("Search players")}
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
               />
@@ -150,7 +151,7 @@ export function PlayersPage() {
             {visible.length === 0 ? (
               <div className="px-6 pt-[12vh] text-center">
                 <p className="text-xs wrap-anywhere text-muted-foreground">
-                  {deferredQuery ? `No player matches “${query.trim()}”.` : filter === "online" ? "Nobody is online right now." : "No players in this list."}
+                  {deferredQuery ? `No player matches “${query.trim()}”.` : filter === "online" ? t("Nobody is online right now.") : t("No players in this list.")}
                 </p>
               </div>
             ) : (
@@ -160,11 +161,11 @@ export function PlayersPage() {
         </div>
 
         {desktop ? (
-          <aside aria-label="Player details" className="hidden w-[25rem] shrink-0 lg:block">
+          <aside aria-label={t("Player details")} className="hidden w-[25rem] shrink-0 lg:block">
             {selected ? (
               <PlayerDetail player={selected} onSelect={select} />
             ) : (
-              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">Pick a player to see their details.</div>
+              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">{t("Pick a player to see their details.")}</div>
             )}
           </aside>
         ) : null}

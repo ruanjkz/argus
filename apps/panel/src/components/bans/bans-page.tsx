@@ -10,6 +10,7 @@ import type { BanRecord, BanStatus } from "@/lib/bans"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { BanDetail } from "./ban-detail"
 import { NewBanDialog, RevokeDialog } from "./ban-dialogs"
@@ -21,10 +22,10 @@ type Filter = BanStatus | "all"
 const WEEK_SECONDS = 7 * 86400
 
 const EMPTY_TEXT: Record<Filter, string> = {
-  active: "Nobody is banned right now.",
-  expired: "No ban has run its full time yet.",
-  revoked: "No ban has been revoked.",
-  all: "No bans on record.",
+  active: t("Nobody is banned right now."),
+  expired: t("No ban has run its full time yet."),
+  revoked: t("No ban has been revoked."),
+  all: t("No bans on record."),
 }
 
 export function BansPage() {
@@ -91,9 +92,9 @@ export function BansPage() {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-3">
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold">Bans</h1>
+          <h1 className="truncate text-sm font-semibold">{t("Bans")}</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-            {`${counts.active} active  ${counts.permanent} permanent  ${counts.endingSoon} end this week`}
+            {t(`${counts.active} active  ${counts.permanent} permanent  ${counts.endingSoon} end this week`)}
           </p>
         </div>
         <button
@@ -102,14 +103,14 @@ export function BansPage() {
           className="press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
           <HugeiconsIcon icon={Add01Icon} strokeWidth={1.75} className="size-3.5" />
-          Ban by identifier
+          {t("Ban by identifier")}
         </button>
       </header>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col lg:border-r lg:border-border/70">
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
-            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Filter bans">
+            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Filter bans")}>
               {filters.map(([value, label, count]) => (
                 <button
                   key={value}
@@ -124,7 +125,7 @@ export function BansPage() {
                     filter === value ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {label}
+                  {t(label)}
                   <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span>
                 </button>
               ))}
@@ -137,8 +138,8 @@ export function BansPage() {
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setQuery("")
                 }}
-                placeholder="Player, reason, ban id or identifier"
-                aria-label="Search bans"
+                placeholder={t("Player, reason, ban id or identifier")}
+                aria-label={t("Search bans")}
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
               />
@@ -159,11 +160,11 @@ export function BansPage() {
         </div>
 
         {desktop ? (
-          <aside aria-label="Ban details" className="hidden w-[25rem] shrink-0 lg:block">
+          <aside aria-label={t("Ban details")} className="hidden w-[25rem] shrink-0 lg:block">
             {selected ? (
               <BanDetail record={selected} onRevoke={setRevoking} />
             ) : (
-              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">Pick a ban to see its details.</div>
+              <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">{t("Pick a ban to see its details.")}</div>
             )}
           </aside>
         ) : null}

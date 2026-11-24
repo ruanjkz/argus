@@ -9,6 +9,7 @@ import { usePlayers, type PlayerView } from "@/components/players-store"
 import { formatAgo } from "@/lib/mock"
 import { formatPlaytime, initials } from "@/lib/players"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { ActionDialog, type PlayerAction } from "./action-dialog"
 
@@ -40,25 +41,25 @@ export function PlayerDetail({ player, onSelect }: { player: PlayerView; onSelec
         <div className="mt-3 flex flex-wrap gap-1.5">
           <button type="button" onClick={() => setAction("message")} disabled={!player.online} className={cn(ACTION_BUTTON, "border border-border hover:bg-muted")}>
             <HugeiconsIcon icon={Message01Icon} strokeWidth={1.75} className="size-3.5" />
-            Message
+            {t("Message")}
           </button>
           <button type="button" onClick={() => setAction("warn")} disabled={player.banned} className={cn(ACTION_BUTTON, "border border-border hover:bg-muted")}>
             <HugeiconsIcon icon={Alert02Icon} strokeWidth={1.75} className="size-3.5" />
-            Warn
+            {t("Warn")}
           </button>
           <button type="button" onClick={() => setAction("kick")} disabled={!player.online} className={cn(ACTION_BUTTON, "border border-border hover:bg-muted")}>
             <HugeiconsIcon icon={Logout03Icon} strokeWidth={1.75} className="size-3.5" />
-            Kick
+            {t("Kick")}
           </button>
           {player.banned ? (
             <button type="button" onClick={() => unban(player.key)} className={cn(ACTION_BUTTON, "bg-muted text-foreground hover:bg-muted/70")}>
               <HugeiconsIcon icon={UserCheck01Icon} strokeWidth={1.75} className="size-3.5" />
-              Revoke ban
+              {t("Revoke ban")}
             </button>
           ) : (
             <button type="button" onClick={() => setAction("ban")} className={cn(ACTION_BUTTON, "bg-destructive/10 text-destructive hover:bg-destructive/20")}>
               <HugeiconsIcon icon={UserBlock01Icon} strokeWidth={1.75} className="size-3.5" />
-              Ban
+              {t("Ban")}
             </button>
           )}
         </div>
@@ -76,13 +77,13 @@ export function PlayerDetail({ player, onSelect }: { player: PlayerView; onSelec
             </div>
           ) : null}
 
-          <Section title="Identifiers" meta={`${player.identifiers.length} ids  ${player.tokens} hardware tokens`}>
+          <Section title={t("Identifiers")} meta={`${player.identifiers.length} ids  ${player.tokens} hardware tokens`}>
             <IdentifierList identifiers={player.identifiers} />
           </Section>
 
-          <Section title="Linked accounts" meta={`${player.linked.length} found`}>
+          <Section title={t("Linked accounts")} meta={`${player.linked.length} found`}>
             {player.linked.length === 0 ? (
-              <p className="px-2 text-xs text-muted-foreground">No other account shares an identifier or token.</p>
+              <p className="px-2 text-xs text-muted-foreground">{t("No other account shares an identifier or token.")}</p>
             ) : (
               <ul className="flex flex-col">
                 {player.linked.map((link) => {
@@ -114,8 +115,8 @@ export function PlayerDetail({ player, onSelect }: { player: PlayerView; onSelec
             )}
           </Section>
 
-          <Section title="History" meta={`${player.history.length} entries`}>
-            <HistoryList entries={player.history} elapsed={elapsed} empty="No warnings, kicks, bans or notes yet." />
+          <Section title={t("History")} meta={`${player.history.length} entries`}>
+            <HistoryList entries={player.history} elapsed={elapsed} empty={t("No warnings, kicks, bans or notes yet.")} />
             <NoteForm playerKey={player.key} />
           </Section>
         </div>
@@ -141,13 +142,13 @@ function NoteForm({ playerKey }: { playerKey: string }) {
   return (
     <form onSubmit={handleSubmit} className="mt-2 flex items-center gap-1.5 px-2">
       <label htmlFor={`note-${playerKey}`} className="sr-only">
-        Add a note
+        {t("Add a note")}
       </label>
       <input
         id={`note-${playerKey}`}
         value={text}
         onChange={(event) => setText(event.target.value)}
-        placeholder="Add a note for staff"
+        placeholder={t("Add a note for staff")}
         className="h-8 min-w-0 flex-1 rounded-lg bg-muted px-2.5 text-xs outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
       />
       <button
@@ -155,7 +156,7 @@ function NoteForm({ playerKey }: { playerKey: string }) {
         disabled={!text.trim()}
         className="press h-8 rounded-lg px-2.5 text-xs font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
       >
-        Add
+        {t("Add")}
       </button>
     </form>
   )
