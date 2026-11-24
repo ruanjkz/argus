@@ -6,7 +6,7 @@ Early development: it has been tested end to end against a simulated FXServer, n
 
 ## Install on Windows
 
-1. Download `Argus.exe` from the [latest release](https://github.com/ruanjkz/argus/releases/latest).
+1. Download `Argus.exe` from the [releases page](https://github.com/ruanjkz/argus/releases).
 2. Put it anywhere on the machine that runs FXServer and open it.
 3. Your browser opens the setup. Pick your server from the list (or paste its folder), confirm where `FXServer.exe` is, create your owner account and click Install.
 
