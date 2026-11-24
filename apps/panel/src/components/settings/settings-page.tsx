@@ -32,6 +32,8 @@ import {
 import { RESOURCE_CATALOG } from "@/lib/resources"
 import { cn } from "@/lib/utils"
 
+import { RepositorySettings } from "./repository-settings"
+
 const INPUT =
   "h-9 w-full rounded-xl border border-border bg-transparent px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
 
@@ -92,6 +94,14 @@ export function SettingsPage() {
       <div className="flex min-h-0 flex-1">
         <nav aria-label="Settings sections" className="hidden w-52 shrink-0 border-r border-border/70 p-2 lg:block">
           <ul className="flex flex-col gap-0.5">
+            <li>
+              <a
+                href="#section-repository"
+                className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Repository
+              </a>
+            </li>
             {SECTIONS.map((section) => (
               <li key={section.id}>
                 <a
@@ -108,6 +118,8 @@ export function SettingsPage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth">
           <div className="mx-auto flex max-w-2xl flex-col gap-10 px-5 py-6 pb-28">
+            <RepositorySettings />
+
             <SettingsSection id="server">
               <TextField label="Server name" hint="Shown in the sidebar and the console log file name." {...field("name")}>
                 <input

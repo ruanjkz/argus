@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { useConsole } from "@/components/console-store"
 import { useLiveServer, type ServerStatus } from "@/components/live-server"
+import type { Remote } from "@/lib/repository"
 import {
   BRANCHES,
   changedPaths,
@@ -29,6 +30,9 @@ type DeploysStore = {
   building: boolean
   drift: DriftEntry[]
   branch: string
+  connection: Remote | null
+  connect: (remote: Remote, branch: string) => void
+  disconnect: () => void
   switchBranch: (name: string) => void
   discardDrift: () => void
   applying: boolean
@@ -67,6 +71,7 @@ export function DeploysProvider({ children }: { children: ReactNode }) {
   const [elapsed, setElapsed] = useState(0)
   const [applying, setApplying] = useState(false)
   const [branch, setBranch] = useState("main")
+  const [connection, setConnection] = useState<Remote | null>(null)
   const [drift, setDrift] = useState<DriftEntry[]>(INITIAL_DRIFT)
   const timers = useRef(new Set<number>())
   const incoming = useRef(0)
@@ -230,6 +235,19 @@ export function DeploysProvider({ children }: { children: ReactNode }) {
     [startDeploy],
   )
 
+  const connect = useCallback((remote: Remote, name: string) => {
+    setConnection(remote)
+    setBranch(name)
+    liveRef.current.logAction(`connected the repository ${remote.owner}/${remote.name}`)
+    consoleRef.current.announce(`Connected to ${remote.owner}/${remote.name}. Tracking origin/${name}.`)
+  }, [])
+
+  const disconnect = useCallback(() => {
+    setConnection(null)
+    liveRef.current.logAction("disconnected the repository")
+    consoleRef.current.announce("Repository disconnected. The resources folder stays as it is.")
+  }, [])
+
   const discardDrift = useCallback(() => {
     const count = driftRef.current.length
     if (!count) return
@@ -288,8 +306,8 @@ export function DeploysProvider({ children }: { children: ReactNode }) {
   const building = deploys.some((deploy) => deploy.status === "building")
 
   const value = useMemo<DeploysStore>(
-    () => ({ deploys: views, byId, building, applying, drift, branch, check, applyNow, cancel, rollback, discardDrift, switchBranch }),
-    [views, byId, building, applying, drift, branch, check, applyNow, cancel, rollback, discardDrift, switchBranch],
+    () => ({ deploys: views, byId, building, applying, drift, branch, connection, check, applyNow, cancel, rollback, discardDrift, switchBranch, connect, disconnect }),
+    [views, byId, building, applying, drift, branch, connection, check, applyNow, cancel, rollback, discardDrift, switchBranch, connect, disconnect],
   )
 
   return <DeploysContext.Provider value={value}>{children}</DeploysContext.Provider>

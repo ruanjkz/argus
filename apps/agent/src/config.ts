@@ -6,6 +6,7 @@ export interface ServerSettings {
   readonly cwd?: string | undefined
   readonly env?: Readonly<Record<string, string>> | undefined
   readonly resourcesPath?: string | undefined
+  readonly dataPath?: string | undefined
   readonly heartbeatResource: string
   readonly bootTimeout: Duration.Duration
   readonly heartbeatTimeout: Duration.Duration

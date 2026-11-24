@@ -14,11 +14,12 @@ import { cn } from "@/lib/utils"
 
 import { DeployDetail } from "./deploy-detail"
 import { BranchPicker } from "./branch-picker"
+import { ConnectWizard } from "./connect-wizard"
 import { DEPLOY_STATUS } from "./deploy-status"
 import { DriftPanel } from "./drift-panel"
 
 export function DeploysPage() {
-  const { deploys, byId, building, branch, check } = useDeploys()
+  const { deploys, byId, building, branch, connection, check } = useDeploys()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -69,13 +70,27 @@ export function DeploysPage() {
     listRef.current?.querySelector<HTMLButtonElement>(`[data-deploy-id="${next.id}"]`)?.focus()
   }
 
+  if (!connection) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="border-b border-border/70 px-5 py-3">
+          <h1 className="truncate text-sm font-semibold">Deploys</h1>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">no repository connected</p>
+        </header>
+        <div className="min-h-0 flex-1">
+          <ConnectWizard />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-3">
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Deploys</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-            {`${REPOSITORY.url}  ${branch}  live ${liveDeploy?.commit ?? "none"}`}
+            {`${connection.sshUrl}  ${branch}  live ${liveDeploy?.commit ?? "none"}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
