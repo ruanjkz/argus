@@ -16,7 +16,7 @@ Windows may warn that the file is from an unknown publisher, because the executa
 
 ## Install on Linux, or from source
 
-Needs [Node.js 22](https://nodejs.org) or newer and [Git](https://git-scm.com).
+On Linux, download `argus-linux.tar.gz` from the [releases page](https://github.com/ruanjkz/argus/releases), extract it and run `./argus`. To run from source instead, you need [Node.js 22](https://nodejs.org) or newer and [Git](https://git-scm.com).
 
 ```bash
 git clone https://github.com/ruanjkz/argus.git
@@ -49,6 +49,8 @@ To let staff in from their own computers, the owner turns on Settings, Remote ac
 - **Bans:** by player or by identifier, with expiry and revoke. The `argus` resource enforces them when players connect.
 - **Resources:** everything in the resources folder with its live state, dependencies, and ensure, start and stop per resource or per `[folder]`.
 - **Deploys:** connect a repository with a read-only deploy key Argus creates. Argus shows the history, fetches new commits, fast forwards the resources folder and restarts, and refuses while files were edited on the server outside Git.
+- **FXServer builds:** download the recommended, latest, optional or critical build from FiveM, switch between them and delete old ones from Settings, FXServer. Builds live in the Argus folder, away from your server files.
+- **Updates:** the sidebar shows when a newer Argus release is out.
 - **Languages:** English, Spanish and Brazilian Portuguese.
 
 ## Development
@@ -64,6 +66,15 @@ npm test                                         # agent tests, all against a si
 npm run dev --prefix apps/panel -- --port 3200   # panel in demo mode
 npm run build:exe                                # builds apps/agent/dist/Argus.exe
 ```
+
+## Releasing
+
+```bash
+npm run release minor               # or patch, major, or an exact version like 0.3.0-beta.1
+git push origin main --follow-tags
+```
+
+`npm run release` bumps the version in every manifest, commits `chore(release): vX.Y.Z` and tags it. The pushed tag starts the Release workflow, which tests the agent, builds `Argus.exe` on Windows and `argus-linux.tar.gz` on Linux, and publishes a GitHub release with both files, `SHA256SUMS.txt` and generated notes. Tags with a suffix such as `-beta.1` are published as pre-releases. Every push and pull request also runs CI: agent types and tests on Windows and Linux, and the panel's types, lint and build.
 
 The landing page lives in [argus-site](https://github.com/ruanjkz/argus-site).
 

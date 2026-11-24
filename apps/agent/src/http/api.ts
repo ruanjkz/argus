@@ -12,7 +12,9 @@ import { Repository } from "../git/repository.ts"
 import { atLeast, type Role } from "../accounts.ts"
 import { readArgusFile, writeArgusFile, type ArgusFile, type PanelSettings } from "../home.ts"
 import { Supervisor } from "../supervisor.ts"
+import { ArtifactError, Artifacts, buildOfExecutable, type Channel } from "../artifacts.ts"
 import { DeployError, deployKeyPath, GitDeploy } from "../git/deploy.ts"
+import { latestRelease } from "../version.ts"
 import { Moderation, ModerationError, type OnlinePlayer } from "../moderation.ts"
 import { scanResources } from "../resources.ts"
 import { HttpError, readBody, send, type Handler, type RequestContext } from "./host.ts"
@@ -171,6 +173,7 @@ export const makeApiHandler = (options: ApiOptions) =>
     )
     const deploy = new GitDeploy(resourcesFolder, () => deployKeyPath(options.home), () => readArgusFile(options.home)?.repository?.url)
     const resourceStates = new Map<string, string>()
+    const artifacts = new Artifacts(options.home)
 
     yield* supervisor.events.pipe(
       Stream.runForEach((event) =>
@@ -202,7 +205,7 @@ export const makeApiHandler = (options: ApiOptions) =>
       try {
         return await work()
       } catch (error) {
-        if (error instanceof ModerationError || error instanceof DeployError) throw new HttpError(error.status, error.message)
+        if (error instanceof ModerationError || error instanceof DeployError || error instanceof ArtifactError) throw new HttpError(error.status, error.message)
         throw error
       }
     }
@@ -410,6 +413,52 @@ export const makeApiHandler = (options: ApiOptions) =>
           const file = readArgusFile(options.home)
           if (file?.repository) writeArgusFile({ ...file, repository: { ...file.repository, branch: name } }, options.home)
           send(response, 200, await guard(deployState))
+          return true
+        }
+        case "GET /version":
+          send(response, 200, await latestRelease())
+          return true
+        case "GET /artifacts": {
+          requireRole(context, "admin")
+          const file = loadFile()
+          const current = buildOfExecutable(file.settings.executable)
+          const channels = await artifacts.channels().catch((error: unknown) => ({ error: error instanceof Error ? error.message : "unreachable" }))
+          send(response, 200, {
+            current,
+            executable: file.settings.executable,
+            managed: file.settings.executable.startsWith(artifacts.folder),
+            channels: Array.isArray(channels) ? channels.map(({ channel, build }) => ({ channel, build })) : [],
+            channelsError: Array.isArray(channels) ? null : channels.error,
+            installed: artifacts.installed().map(({ build, installedAt }) => ({ build, installedAt })),
+            job: artifacts.status() ?? null
+          })
+          return true
+        }
+        case "POST /artifacts/install": {
+          requireRole(context, "owner")
+          const body = await readBody(request)
+          const channel = body.channel
+          if (channel !== "recommended" && channel !== "latest" && channel !== "optional" && channel !== "critical") throw new HttpError(400, "Pick a channel")
+          send(response, 202, await guard(() => artifacts.install(channel as Channel)))
+          return true
+        }
+        case "POST /artifacts/use": {
+          requireRole(context, "owner")
+          const body = await readBody(request)
+          const build = typeof body.build === "string" ? body.build : ""
+          if (!artifacts.installed().some((entry) => entry.build === build)) throw new HttpError(404, "That build is not installed")
+          const file = loadFile()
+          writeArgusFile({ ...file, settings: { ...file.settings, executable: artifacts.executableFor(build) } }, options.home)
+          if (body.restart === true) await run(supervisor.restart)
+          send(response, 200, { ok: true, executable: artifacts.executableFor(build) })
+          return true
+        }
+        case "POST /artifacts/remove": {
+          requireRole(context, "owner")
+          const body = await readBody(request)
+          const file = loadFile()
+          await guard(async () => artifacts.remove(typeof body.build === "string" ? body.build : "", buildOfExecutable(file.settings.executable)))
+          send(response, 200, { ok: true })
           return true
         }
         case "GET /deploys/branches":

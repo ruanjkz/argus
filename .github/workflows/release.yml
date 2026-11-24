@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            asset: Argus.exe
+          - os: ubuntu-latest
+            asset: argus-linux.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/agent/package-lock.json
+            apps/panel/package-lock.json
+      - name: Check the tag matches the version
+        shell: bash
+        run: |
+          expected="v$(node -p "require('./apps/agent/package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match apps/agent/package.json ($expected). Run npm run release first."
+            exit 1
+          fi
+      - run: npm ci --prefix apps/agent
+      - run: npm ci --prefix apps/panel
+      - if: runner.os == 'Windows'
+        run: npm test --prefix apps/agent
+      - run: npm run build:exe
+      - name: Package for Linux
+        if: runner.os == 'Linux'
+        run: |
+          chmod +x apps/agent/dist/argus
+          tar -czf apps/agent/dist/argus-linux.tar.gz -C apps/agent/dist argus
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: apps/agent/dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Write checksums
+        working-directory: assets
+        run: sha256sum Argus.exe argus-linux.tar.gz > SHA256SUMS.txt
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" assets/Argus.exe assets/argus-linux.tar.gz assets/SHA256SUMS.txt \
+            --title "Argus ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            --verify-tag \
+            $flags

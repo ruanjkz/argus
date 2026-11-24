@@ -19,6 +19,7 @@ import {
 
 import { ArgusMark } from "@/components/argus-mark"
 import { useAgent } from "@/components/agent-store"
+import { VersionBadge } from "@/components/shell/version-badge"
 import { useLiveServer } from "@/components/live-server"
 import { AnimatedNumber } from "@/components/motion-primitives"
 import {
@@ -80,7 +81,7 @@ export function AppSidebar({ onToggle, onNavigate }: { onToggle?: () => void; on
           <ThemeToggle />
           <LanguageSelect />
         </div>
-        <span className="font-mono text-[11px] text-muted-foreground/60">v0.1</span>
+        <VersionBadge />
       </div>
     </aside>
   )

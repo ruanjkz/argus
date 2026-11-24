@@ -18,7 +18,9 @@ import { makeSetupHandler } from "./http/setup.ts"
 import { makeTeamHandler } from "./http/team.ts"
 import { Supervisor } from "./supervisor.ts"
 
-export const VERSION = "0.1.0"
+import { VERSION } from "./version.ts"
+
+export { VERSION }
 
 export const FAKE_SERVER_ENV = "ARGUS_RUN_FAKE_FXSERVER"
 

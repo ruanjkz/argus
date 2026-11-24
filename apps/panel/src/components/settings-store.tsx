@@ -12,6 +12,7 @@ type SettingsStore = {
   update: (patch: Partial<SettingsDraft>) => void
   discard: () => void
   save: () => Promise<Settings>
+  reload: () => void
 }
 
 const SettingsContext = createContext<SettingsStore | null>(null)
@@ -20,6 +21,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const { mode, call } = useAgent()
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [draft, setDraft] = useState<SettingsDraft>(() => toDraft(DEFAULT_SETTINGS))
+
+  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     if (mode !== "live") return
@@ -35,7 +38,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [mode, call])
+  }, [mode, call, revision])
+
+  const reload = useCallback(() => setRevision((value) => value + 1), [])
 
   const update = useCallback((patch: Partial<SettingsDraft>) => setDraft((previous) => ({ ...previous, ...patch })), [])
 
@@ -52,8 +57,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const changed = useMemo(() => changedKeys(draft, toDraft(settings)), [draft, settings])
 
   const value = useMemo<SettingsStore>(
-    () => ({ settings, draft, changed, update, discard, save }),
-    [settings, draft, changed, update, discard, save],
+    () => ({ settings, draft, changed, update, discard, save, reload }),
+    [settings, draft, changed, update, discard, save, reload],
   )
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

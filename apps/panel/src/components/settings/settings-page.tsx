@@ -33,6 +33,7 @@ import { RESOURCE_CATALOG } from "@/lib/resources"
 import { cn } from "@/lib/utils"
 import { t } from "@/lib/i18n"
 
+import { ArtifactSettings } from "./artifact-settings"
 import { RemoteSettings } from "./remote-settings"
 import { RepositorySettings } from "./repository-settings"
 import { TeamSettings } from "./team-settings"
@@ -119,6 +120,14 @@ export function SettingsPage() {
             </li>
             <li>
               <a
+                href="#section-artifacts"
+                className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                FXServer
+              </a>
+            </li>
+            <li>
+              <a
                 href="#section-repository"
                 className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -144,6 +153,8 @@ export function SettingsPage() {
             <TeamSettings />
 
             <RemoteSettings />
+
+            <ArtifactSettings />
 
             <RepositorySettings />
 
