@@ -1,5 +1,6 @@
 import { homedir } from "node:os"
 
+import { passwordProblem, usernameProblem, type AccountStore } from "../accounts.ts"
 import { createArgusFile, defaultSettings, readArgusFile, writeArgusFile, type ArgusFile } from "../home.ts"
 import {
   checkDataFolder,
@@ -13,15 +14,15 @@ import {
   installResource,
   type ServerCandidate
 } from "../install.ts"
-import { HttpError, readBody, send, type Handler } from "./host.ts"
+import { HttpError, readBody, send, sessionCookie, type Handler } from "./host.ts"
 
 const text = (value: unknown) => (typeof value === "string" ? value : "")
 
-export const makeSetupHandler = (home: string, onInstalled: (file: ArgusFile) => void): Handler => {
+export const makeSetupHandler = (home: string, accounts: AccountStore, onInstalled: (file: ArgusFile) => void): Handler => {
   let candidates: Array<ServerCandidate> | undefined
   let installed = false
 
-  return async (request, response, route) => {
+  return async (request, response, route, context) => {
     switch (route) {
       case "GET /state":
         send(response, 409, { error: "Argus is not set up yet", setup: true })
@@ -32,7 +33,8 @@ export const makeSetupHandler = (home: string, onInstalled: (file: ArgusFile) =>
           configured: false,
           platform: process.platform,
           executableName: EXECUTABLE_NAMES[0],
-          candidates
+          candidates,
+          needsOwner: !accounts.hasOwner
         })
         return true
       case "POST /setup/check": {
@@ -65,6 +67,10 @@ export const makeSetupHandler = (home: string, onInstalled: (file: ArgusFile) =>
         const executable = checkExecutable(text(body.executable))
         if (!executable.ok) throw new HttpError(400, executable.message)
         const name = text(body.name).trim().slice(0, 32) || guessName(data.value)
+        const username = text(body.username).trim().toLowerCase()
+        const password = text(body.password)
+        const ownerProblem = accounts.hasOwner ? null : (usernameProblem(username) ?? passwordProblem(password, username))
+        if (ownerProblem) throw new HttpError(400, ownerProblem)
         installResource(data.value)
         ensureInConfig(data.value)
         const existing = readArgusFile(home)
@@ -77,6 +83,10 @@ export const makeSetupHandler = (home: string, onInstalled: (file: ArgusFile) =>
         }
         const file = existing ? { ...existing, settings } : createArgusFile(settings)
         writeArgusFile(file, home)
+        if (!accounts.hasOwner) {
+          const owner = accounts.createOwner(username, password)
+          response.setHeader("set-cookie", sessionCookie(accounts.startSession(owner), context.secure))
+        }
         installed = true
         send(response, 200, { ok: true })
         setTimeout(() => onInstalled(file), 50)

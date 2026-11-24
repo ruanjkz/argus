@@ -38,6 +38,7 @@ export interface ArgusFile {
   panelPort: number
   settings: PanelSettings
   repository: RepositoryLink | null
+  remote: boolean
 }
 
 export const DEFAULT_AGENT_PORT = 3201
@@ -74,7 +75,8 @@ export const createArgusFile = (settings: PanelSettings): ArgusFile => ({
   agentPort: DEFAULT_AGENT_PORT,
   panelPort: DEFAULT_PANEL_PORT,
   settings,
-  repository: null
+  repository: null,
+  remote: false
 })
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null
@@ -93,6 +95,7 @@ export const readArgusFile = (home = argusHome()): ArgusFile | undefined => {
     agentPort: typeof parsed.agentPort === "number" ? parsed.agentPort : DEFAULT_AGENT_PORT,
     panelPort: typeof parsed.panelPort === "number" ? parsed.panelPort : DEFAULT_PANEL_PORT,
     settings: { ...fallback, ...(parsed.settings as Partial<PanelSettings>) },
+    remote: parsed.remote === true,
     repository: isRecord(parsed.repository) && typeof parsed.repository.url === "string" && typeof parsed.repository.branch === "string"
       ? { url: parsed.repository.url, branch: parsed.repository.branch }
       : null

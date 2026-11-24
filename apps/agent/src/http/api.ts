@@ -9,13 +9,31 @@ import type { ServerStatus, SupervisorEvent } from "../domain.ts"
 import { GitConnection } from "../git/connection.ts"
 import { parseRemote } from "../git/remote.ts"
 import { Repository } from "../git/repository.ts"
+import { atLeast, type Role } from "../accounts.ts"
 import { readArgusFile, writeArgusFile, type ArgusFile, type PanelSettings } from "../home.ts"
 import { Supervisor } from "../supervisor.ts"
-import { HttpError, readBody, send, type Handler } from "./host.ts"
+import { HttpError, readBody, send, type Handler, type RequestContext } from "./host.ts"
 
 const HISTORY_LINES = 1000
 const KEEP_ALIVE_MS = 15_000
 const MAX_CLIENTS_PATTERN = /^\s*sv_maxclients\s+(\d+)/m
+
+const COMMAND_ROLES: Record<string, Role> = {
+  status: "moderator",
+  say: "moderator",
+  clientkick: "moderator",
+  set: "owner",
+  exec: "owner",
+  quit: "owner",
+  sv_licensekey: "owner",
+  rcon_password: "owner"
+}
+
+const requireRole = (context: RequestContext, role: Role) => {
+  if (context.account && !atLeast(context.account, role)) {
+    throw new HttpError(403, `Only ${role === "owner" ? "the owner" : `${role}s`} can do this`)
+  }
+}
 
 const maxPlayersOf = (settings: PanelSettings) => {
   try {
@@ -130,7 +148,7 @@ export const makeApiHandler = (options: ApiOptions) =>
       }
     }
 
-    const handle: Handler = async (request: IncomingMessage, response: ServerResponse, route: string) => {
+    const handle: Handler = async (request: IncomingMessage, response: ServerResponse, route: string, context: RequestContext) => {
       switch (route) {
         case "GET /setup":
           send(response, 200, { configured: true })
@@ -142,14 +160,17 @@ export const makeApiHandler = (options: ApiOptions) =>
           events(request, response)
           return true
         case "POST /server/start":
+          requireRole(context, "admin")
           await run(supervisor.start)
           send(response, 202, { ok: true })
           return true
         case "POST /server/stop":
+          requireRole(context, "admin")
           await run(supervisor.stop)
           send(response, 202, { ok: true })
           return true
         case "POST /server/restart":
+          requireRole(context, "admin")
           await run(supervisor.restart)
           send(response, 202, { ok: true })
           return true
@@ -157,6 +178,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           const body = await readBody(request)
           const command = typeof body.command === "string" ? body.command.trim() : ""
           if (!command) throw new HttpError(400, "Send a command")
+          requireRole(context, COMMAND_ROLES[command.split(/\s+/)[0]?.toLowerCase() ?? ""] ?? "admin")
           const result = await run(Effect.result(supervisor.send(command)))
           if (result._tag === "Failure") throw new HttpError(409, `Server is ${result.failure.status}`)
           send(response, 202, { ok: true })
@@ -169,6 +191,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           send(response, 200, loadFile().settings)
           return true
         case "PUT /settings": {
+          requireRole(context, "owner")
           const body = await readBody(request)
           const file = loadFile()
           const next = { ...file.settings, ...(body as Partial<PanelSettings>) }
@@ -180,6 +203,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           send(response, 200, await gitState())
           return true
         case "POST /git/key": {
+          requireRole(context, "owner")
           const file = loadFile()
           const key = await run(Effect.result(connection.deployKey(`argus-${file.settings.name}`)))
           if (key._tag === "Failure") throw new HttpError(500, key.failure.message)
@@ -187,6 +211,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           return true
         }
         case "POST /git/test": {
+          requireRole(context, "owner")
           const body = await readBody(request)
           const remote = typeof body.url === "string" ? parseRemote(body.url) : undefined
           if (!remote) throw new HttpError(400, "That is not a repository link")
@@ -206,6 +231,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           return true
         }
         case "PUT /git": {
+          requireRole(context, "owner")
           const body = await readBody(request)
           const file = loadFile()
           if (body.url === null) {

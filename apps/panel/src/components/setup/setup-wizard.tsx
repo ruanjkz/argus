@@ -6,11 +6,12 @@ import { Alert02Icon, Folder01Icon, Loading03Icon, Tick02Icon } from "@hugeicons
 
 import { agentCall } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
+import { MIN_PASSWORD, OwnerFields, passwordHint } from "@/components/auth/auth-screens"
 import { cn } from "@/lib/utils"
 
 type Candidate = { dataFolder: string; name: string; executable: string | null }
 
-type SetupInfo = { configured: boolean; platform: string; executableName: string; candidates: Candidate[] }
+type SetupInfo = { configured: boolean; platform: string; executableName: string; candidates: Candidate[]; needsOwner?: boolean }
 
 type CheckResult = { ok: true; value: string } | { ok: false; message: string }
 
@@ -35,6 +36,9 @@ export function SetupWizard() {
   const [name, setName] = useState("")
   const [nameTouched, setNameTouched] = useState(false)
   const [autoStart, setAutoStart] = useState(true)
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
   const [check, setCheck] = useState<Check | null>(null)
   const [phase, setPhase] = useState<Phase>("idle")
   const [error, setError] = useState<string | null>(null)
@@ -73,7 +77,9 @@ export function SetupWizard() {
 
   const folderOk = check?.dataFolder.ok === true && dataFolder.trim() !== ""
   const executableOk = check?.executable?.ok === true
-  const ready = folderOk && executableOk && phase !== "installing" && phase !== "starting"
+  const needsOwner = info?.needsOwner !== false
+  const ownerOk = !needsOwner || (username.length >= 2 && password.length >= MIN_PASSWORD && !passwordHint(password, username) && confirm === password)
+  const ready = folderOk && executableOk && ownerOk && phase !== "installing" && phase !== "starting"
   const executableName = info?.executableName ?? "FXServer.exe"
 
   async function install(event: FormEvent) {
@@ -87,13 +93,15 @@ export function SetupWizard() {
         executable: check.executable.value,
         name,
         autoStart,
+        username,
+        password,
       })
       setPhase("starting")
       for (;;) {
         await new Promise((resolve) => window.setTimeout(resolve, READY_POLL_MS))
         try {
           await agentCall("GET", "state")
-          window.location.assign("/")
+          window.location.reload()
           return
         } catch {
           continue
@@ -217,6 +225,20 @@ export function SetupWizard() {
               spellCheck={false}
               className={cn(INPUT, "mt-1.5 font-sans text-sm")}
             />
+            {needsOwner ? (
+              <div className="mt-5">
+                <p className="text-sm font-medium">Your owner account</p>
+                <p className="mt-0.5 mb-3 text-xs text-muted-foreground">You sign in with it, and you create the logins for your staff later.</p>
+                <OwnerFields
+                  username={username}
+                  password={password}
+                  confirm={confirm}
+                  onUsername={setUsername}
+                  onPassword={setPassword}
+                  onConfirm={setConfirm}
+                />
+              </div>
+            ) : null}
             <div className="mt-4 rounded-xl bg-muted px-3.5 py-3 text-xs">
               <p className="font-medium text-foreground/90">Argus will</p>
               <ul className="mt-1.5 flex flex-col gap-1 text-muted-foreground">
@@ -247,7 +269,9 @@ export function SetupWizard() {
             {phase === "installing" ? "Installing" : phase === "starting" ? "Opening the panel" : "Install"}
           </button>
           {!ready && phase === "idle" ? (
-            <span className="text-xs text-muted-foreground">{folderOk ? `Point to ${executableName} to continue.` : "Pick your server to continue."}</span>
+            <span className="text-xs text-muted-foreground">
+              {!folderOk ? "Pick your server to continue." : !executableOk ? `Point to ${executableName} to continue.` : "Create your owner account to continue."}
+            </span>
           ) : null}
         </div>
       </form>

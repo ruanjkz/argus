@@ -1,12 +1,15 @@
 import { timingSafeEqual } from "node:crypto"
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
+import { networkInterfaces } from "node:os"
 import { extname } from "node:path"
 
 import { Effect } from "effect"
 
+import { AccountError, type Account, type AccountStore } from "../accounts.ts"
 import { panelFile } from "../assets.ts"
 
 const MAX_BODY_BYTES = 64 * 1024
+export const SESSION_COOKIE = "argus_session"
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -22,13 +25,25 @@ const CONTENT_TYPES: Record<string, string> = {
   ".map": "application/json"
 }
 
+const PUBLIC_ROUTES = new Set(["GET /session", "POST /session", "POST /session/logout", "POST /accounts/owner"])
+const SETUP_ROUTES = new Set(["GET /setup", "POST /setup/check", "POST /setup/install", "GET /state"])
+const PASSWORD_ROUTES = new Set(["POST /session/password"])
+
 export class HttpError extends Error {
   constructor(readonly status: number, message: string) {
     super(message)
   }
 }
 
-export type Handler = (request: IncomingMessage, response: ServerResponse, route: string) => Promise<boolean>
+export interface RequestContext {
+  readonly account: Account | undefined
+  readonly token: string | undefined
+  readonly local: boolean
+  readonly address: string
+  readonly secure: boolean
+}
+
+export type Handler = (request: IncomingMessage, response: ServerResponse, route: string, context: RequestContext) => Promise<boolean>
 
 export const send = (response: ServerResponse, status: number, body: unknown) => {
   response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" })
@@ -61,6 +76,19 @@ export const readBody = (request: IncomingMessage) =>
     request.on("error", reject)
   })
 
+export const sessionCookie = (token: string, secure: boolean) =>
+  `${SESSION_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${30 * 86400}${secure ? "; Secure" : ""}`
+
+export const clearedCookie = () => `${SESSION_COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`
+
+const readCookie = (request: IncomingMessage, name: string) => {
+  for (const part of (request.headers.cookie ?? "").split(";")) {
+    const [key, ...value] = part.trim().split("=")
+    if (key === name) return value.join("=")
+  }
+  return undefined
+}
+
 const hasToken = (request: IncomingMessage, token: string | undefined) => {
   if (!token) return false
   const header = request.headers.authorization ?? ""
@@ -69,66 +97,83 @@ const hasToken = (request: IncomingMessage, token: string | undefined) => {
   return given.length === expected.length && timingSafeEqual(given, expected)
 }
 
-const localHosts = (port: number) => new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`])
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"])
 
-const browserAllowed = (request: IncomingMessage, port: number, devOrigin: string | undefined) => {
-  const hosts = localHosts(port)
-  if (!hosts.has(request.headers.host ?? "")) return false
-  const origin = request.headers.origin
-  if (origin !== undefined && origin !== devOrigin) {
-    try {
-      if (!hosts.has(new URL(origin).host)) return false
-    } catch {
-      return false
-    }
-  }
-  if (request.method !== "GET" && request.headers["x-argus"] !== "1") return false
-  return request.headers["sec-fetch-site"] !== "cross-site" || origin === devOrigin
-}
+export const lanAddresses = () =>
+  Object.values(networkInterfaces())
+    .flat()
+    .filter((entry) => entry !== undefined && entry.family === "IPv4" && !entry.internal)
+    .map((entry) => entry!.address)
 
 const serveStatic = (request: IncomingMessage, response: ServerResponse, pathname: string) => {
   if (request.method !== "GET" && request.method !== "HEAD") return false
   const clean = decodeURIComponent(pathname).replace(/^\/+/, "").replace(/\/+$/, "")
   if (clean.includes("..")) return false
   const candidates = clean === "" ? ["index.html"] : [clean, `${clean}.html`, `${clean}/index.html`]
+  const headers = { "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer" }
   for (const candidate of candidates) {
     const data = panelFile(candidate)
     if (!data) continue
     response.writeHead(200, {
+      ...headers,
       "content-type": CONTENT_TYPES[extname(candidate)] ?? "application/octet-stream",
-      "cache-control": candidate.startsWith("_next/static/") ? "public, max-age=31536000, immutable" : "no-cache",
-      "x-content-type-options": "nosniff",
-      "x-frame-options": "DENY"
+      "cache-control": candidate.startsWith("_next/static/") ? "public, max-age=31536000, immutable" : "no-cache"
     })
     response.end(request.method === "HEAD" ? undefined : data)
     return true
   }
-  const missing = panelFile("404.html")
-  response.writeHead(404, { "content-type": "text/html; charset=utf-8" })
-  response.end(missing ?? "Not found")
+  response.writeHead(404, { ...headers, "content-type": "text/html; charset=utf-8" })
+  response.end(panelFile("404.html") ?? "Not found")
   return true
+}
+
+export interface HostOptions {
+  readonly port: number
+  readonly remote: boolean
+  readonly accounts: AccountStore
 }
 
 export interface HttpHost {
   readonly port: number
-  use(handler: Handler, token?: string): void
+  readonly remote: boolean
+  use(handler: Handler, token?: string, setup?: boolean): void
+  setRemote(remote: boolean): Promise<void>
 }
 
-export const startHost = (port: number) =>
+export const startHost = (options: HostOptions) =>
   Effect.gen(function*() {
+    const { port, accounts } = options
+    let remote = options.remote
     let handler: Handler | undefined
     let token: string | undefined
+    let setupMode = false
     const devOrigin = process.env.ARGUS_DEV_ORIGIN
+    const localHosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`])
+
+    const sameOrigin = (request: IncomingMessage) => {
+      const origin = request.headers.origin
+      if (origin === undefined) return request.headers["sec-fetch-site"] !== "cross-site"
+      if (origin === devOrigin) return true
+      try {
+        return new URL(origin).host === request.headers.host
+      } catch {
+        return false
+      }
+    }
 
     const handle = async (request: IncomingMessage, response: ServerResponse) => {
       const url = new URL(request.url ?? "/", "http://localhost")
+      const address = request.socket.remoteAddress ?? ""
+      const local = LOOPBACK.has(address)
+      const knownHost = localHosts.has(request.headers.host ?? "")
+      if (!remote && !knownHost) throw new HttpError(421, "Open Argus at http://localhost")
       if (!url.pathname.startsWith("/api/")) {
-        if (!localHosts(port).has(request.headers.host ?? "")) throw new HttpError(421, "Open Argus at http://localhost")
         serveStatic(request, response, url.pathname)
         return
       }
       if (devOrigin && request.headers.origin === devOrigin) {
         response.setHeader("access-control-allow-origin", devOrigin)
+        response.setHeader("access-control-allow-credentials", "true")
         response.setHeader("access-control-allow-headers", "content-type, x-argus")
         response.setHeader("access-control-allow-methods", "GET, POST, PUT")
         if (request.method === "OPTIONS") {
@@ -138,37 +183,82 @@ export const startHost = (port: number) =>
         }
       }
       if (url.pathname === "/api/health") return send(response, 200, { ok: true })
-      if (!hasToken(request, token) && !browserAllowed(request, port, devOrigin)) throw new HttpError(403, "Request refused")
+
       const route = `${request.method ?? "GET"} ${url.pathname.slice(4)}`
-      const handled = handler ? await handler(request, response, route) : false
+      const scripted = hasToken(request, token) && local
+      if (!scripted) {
+        if (!sameOrigin(request)) throw new HttpError(403, "Cross-site requests are not allowed")
+        if (request.method !== "GET" && request.headers["x-argus"] !== "1") throw new HttpError(403, "Missing x-argus header")
+      }
+
+      const sessionToken = readCookie(request, SESSION_COOKIE)
+      const account = accounts.fromToken(sessionToken)
+      const context: RequestContext = { account, token: sessionToken, local, address, secure: request.headers["x-forwarded-proto"] === "https" }
+
+      if (setupMode) {
+        if (!SETUP_ROUTES.has(route)) throw new HttpError(409, "Argus is not set up yet")
+        if (!local) throw new HttpError(403, "Finish the setup on the machine that runs Argus")
+      } else if (!scripted && !PUBLIC_ROUTES.has(route)) {
+        if (!account) throw new HttpError(401, "Sign in first")
+        if (account.mustChangePassword && !PASSWORD_ROUTES.has(route)) throw new HttpError(428, "Change your password first")
+      }
+
+      const handled = handler ? await handler(request, response, route, context) : false
       if (!handled) throw new HttpError(404, "Not found")
     }
 
-    const server = createServer((request, response) => {
+    const listener = (request: IncomingMessage, response: ServerResponse) => {
       handle(request, response).catch((error: unknown) => {
         if (response.headersSent) return response.end()
-        if (error instanceof HttpError) return send(response, error.status, { error: error.message })
+        if (error instanceof HttpError || error instanceof AccountError) return send(response, error.status, { error: error.message })
         return send(response, 500, { error: error instanceof Error ? error.message : "Unexpected error" })
       })
-    })
+    }
+
+    let server: Server = createServer(listener)
+
+    const listen = (target: Server, bindRemote: boolean) =>
+      new Promise<void>((resolve, reject) => {
+        target.once("error", reject)
+        target.listen(port, bindRemote ? "0.0.0.0" : "127.0.0.1", () => {
+          target.off("error", reject)
+          resolve()
+        })
+      })
+
+    const close = (target: Server) =>
+      new Promise<void>((resolve) => {
+        target.closeAllConnections()
+        target.close(() => resolve())
+      })
 
     yield* Effect.acquireRelease(
-      Effect.callback<void, Error>((resume) => {
-        server.once("error", (error) => resume(Effect.fail(error)))
-        server.listen(port, "127.0.0.1", () => resume(Effect.void))
-      }),
-      () =>
-        Effect.callback<void>((resume) => {
-          server.closeAllConnections()
-          server.close(() => resume(Effect.void))
-        })
+      Effect.tryPromise({ try: () => listen(server, remote), catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))) }),
+      () => Effect.promise(() => close(server))
     )
 
     const host: HttpHost = {
       port,
-      use: (next, nextToken) => {
+      get remote() {
+        return remote
+      },
+      use: (next, nextToken, setup = false) => {
         handler = next
         token = nextToken
+        setupMode = setup
+      },
+      setRemote: async (next) => {
+        if (next === remote) return
+        await close(server)
+        server = createServer(listener)
+        try {
+          await listen(server, next)
+          remote = next
+        } catch (error) {
+          server = createServer(listener)
+          await listen(server, remote)
+          throw error
+        }
       }
     }
     return host

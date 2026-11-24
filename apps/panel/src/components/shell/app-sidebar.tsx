@@ -37,6 +37,7 @@ import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
 
 import { ThemeToggle } from "./theme-toggle"
+import { UserMenu } from "./user-menu"
 
 const ROW =
   "flex h-9 w-full items-center gap-2.5 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted active:text-foreground focus-visible:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-45 aria-expanded:bg-muted aria-expanded:text-foreground"
@@ -68,7 +69,10 @@ export function AppSidebar({ onToggle, onNavigate }: { onToggle?: () => void; on
         {onToggle ? <SidebarToggle onToggle={onToggle} /> : null}
       </div>
       <Navigation onNavigate={onNavigate} />
-      <div className="mt-auto flex items-center justify-between px-1 pb-0.5">
+      <div className="mt-auto">
+        <UserMenu />
+      </div>
+      <div className="flex items-center justify-between px-1 pb-0.5">
         <ThemeToggle />
         <span className="font-mono text-[11px] text-muted-foreground/60">v0.1</span>
       </div>

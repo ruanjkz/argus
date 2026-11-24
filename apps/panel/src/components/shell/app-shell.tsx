@@ -6,6 +6,7 @@ import { Menu01Icon } from "@hugeicons/core-free-icons"
 
 import { AgentProvider, useAgent } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
+import { LoginScreen, OwnerScreen, PasswordScreen } from "@/components/auth/auth-screens"
 import { ConsoleProvider } from "@/components/console-store"
 import { DeploysProvider } from "@/components/deploys-store"
 import { PlayersProvider } from "@/components/players-store"
@@ -111,5 +112,8 @@ function ServerProviders({ children }: { children: ReactNode }) {
 function SetupGate({ children }: { children: ReactNode }) {
   const { mode } = useAgent()
   if (mode === "setup") return <SetupWizard />
+  if (mode === "owner") return <OwnerScreen />
+  if (mode === "login") return <LoginScreen />
+  if (mode === "password") return <PasswordScreen />
   return <>{children}</>
 }

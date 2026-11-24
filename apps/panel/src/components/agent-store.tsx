@@ -35,11 +35,30 @@ type AgentServer = {
 
 type AgentStateResponse = AgentServer & { lines: AgentLine[]; problems: AgentProblem[] }
 
-export type AgentMode = "connecting" | "setup" | "live" | "demo"
+export type AgentMode = "connecting" | "setup" | "owner" | "login" | "password" | "live" | "demo"
+
+export type AgentRole = "owner" | "admin" | "moderator"
+
+export type AgentAccount = {
+  id: string
+  username: string
+  role: AgentRole
+  mustChangePassword: boolean
+  disabled: boolean
+  createdAt: number
+  createdBy: string | null
+  lastLoginAt: number | null
+}
+
+type SessionResponse = { account: AgentAccount | null; needsOwner: boolean; canCreateOwner: boolean; remote: boolean }
 
 type AgentStore = {
   mode: AgentMode
   reachable: boolean
+  account: AgentAccount | null
+  canCreateOwner: boolean
+  refresh: () => void
+  signOut: () => Promise<void>
   server: AgentServer | null
   lines: AgentLine[]
   problems: AgentProblem[]
@@ -82,6 +101,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [server, setServer] = useState<AgentServer | null>(null)
   const [lines, setLines] = useState<AgentLine[]>([])
   const [problems, setProblems] = useState<AgentProblem[]>([])
+  const [account, setAccount] = useState<AgentAccount | null>(null)
+  const [canCreateOwner, setCanCreateOwner] = useState(false)
+  const [generation, setGeneration] = useState(0)
   const lastLine = useRef(-1)
 
   useEffect(() => {
@@ -141,6 +163,30 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     const connect = async () => {
       try {
+        const session = await agentCall<SessionResponse>("GET", "session").catch((error: unknown) => {
+          if (error instanceof AgentError && error.status === 409) return null
+          throw error
+        })
+        if (disposed) return
+        if (session) {
+          setAccount(session.account)
+          setCanCreateOwner(session.canCreateOwner)
+          if (session.needsOwner && !session.account) {
+            setReachable(true)
+            setMode("owner")
+            return
+          }
+          if (!session.account) {
+            setReachable(true)
+            setMode("login")
+            return
+          }
+          if (session.account.mustChangePassword) {
+            setReachable(true)
+            setMode("password")
+            return
+          }
+        }
         const state = await agentCall<AgentStateResponse>("GET", "state")
         if (disposed) return
         everLive = true
@@ -165,6 +211,16 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           setMode("setup")
           return
         }
+        if (error instanceof AgentError && error.status === 401) {
+          setReachable(true)
+          setMode("login")
+          return
+        }
+        if (error instanceof AgentError && error.status === 428) {
+          setReachable(true)
+          setMode("password")
+          return
+        }
         setReachable(false)
         if (everLive) scheduleRetry()
         else setMode("demo")
@@ -177,11 +233,22 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       source?.close()
       if (retry !== null) window.clearTimeout(retry)
     }
+  }, [generation])
+
+  const refresh = useCallback(() => setGeneration((value) => value + 1), [])
+
+  const signOut = useCallback(async () => {
+    await agentCall("POST", "session/logout").catch(() => undefined)
+    setAccount(null)
+    setMode("login")
   }, [])
 
   const call = useCallback(<T,>(method: "GET" | "POST" | "PUT", path: string, body?: unknown) => agentCall<T>(method, path, body), [])
 
-  const value = useMemo<AgentStore>(() => ({ mode, reachable, server, lines, problems, call }), [mode, reachable, server, lines, problems, call])
+  const value = useMemo<AgentStore>(
+    () => ({ mode, reachable, account, canCreateOwner, refresh, signOut, server, lines, problems, call }),
+    [mode, reachable, account, canCreateOwner, refresh, signOut, server, lines, problems, call],
+  )
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>
 }

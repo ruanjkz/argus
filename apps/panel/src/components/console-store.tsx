@@ -72,6 +72,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
   const agent = useAgent()
   const liveMode = agent.mode === "live"
+  const role: Role = liveMode && agent.account ? agent.account.role : CURRENT_ROLE
+  const roleRef = useRef(role)
   const liveModeRef = useRef(liveMode)
   const [clearedAfter, setClearedAfter] = useState(-1)
   const resources = useResources()
@@ -90,6 +92,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     resourcesRef.current = resources
     agentRef.current = agent
     liveModeRef.current = liveMode
+    roleRef.current = role
     settingsRef.current = settings
   })
 
@@ -191,8 +194,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       const command = REGISTERED_COMMANDS.find((entry) => entry.name === name)
       const echo: ConsoleDraft = { kind: "command", source: "console", tag: "you", text: value }
       if (liveModeRef.current) {
-        if (command && !canRun(command)) {
-          append([{ kind: "warn", source: "argus", tag: "argus", text: `Blocked ${name}: needs ${command.minRole}, you are ${CURRENT_ROLE}` }])
+        if (command && !canRun(command, roleRef.current)) {
+          append([{ kind: "warn", source: "argus", tag: "argus", text: `Blocked ${name}: needs ${command.minRole}, you are ${roleRef.current}` }])
           return
         }
         void agentRef.current.call("POST", "command", { command: value }).catch((error: unknown) =>
@@ -206,7 +209,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
         return
       }
       if (!canRun(command)) {
-        append([{ kind: "warn", source: "argus", tag: "argus", text: `Blocked ${name}: needs ${command.minRole}, you are ${CURRENT_ROLE}` }])
+        append([{ kind: "warn", source: "argus", tag: "argus", text: `Blocked ${name}: needs ${command.minRole}, you are ${roleRef.current}` }])
         return
       }
       if (liveRef.current.status !== "online") {
@@ -353,7 +356,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     return local.length ? [...fromAgent, ...local].sort((first, second) => first.time.localeCompare(second.time)) : fromAgent
   }, [liveMode, lines, agentLines, clearedAfter])
 
-  const value = useMemo<ConsoleStore>(() => ({ lines: shown, role: CURRENT_ROLE, run, clear, announce }), [shown, run, clear, announce])
+  const value = useMemo<ConsoleStore>(() => ({ lines: shown, role, run, clear, announce }), [shown, role, run, clear, announce])
 
   return <ConsoleContext.Provider value={value}>{children}</ConsoleContext.Provider>
 }

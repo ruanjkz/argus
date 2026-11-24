@@ -32,7 +32,9 @@ import {
 import { RESOURCE_CATALOG } from "@/lib/resources"
 import { cn } from "@/lib/utils"
 
+import { RemoteSettings } from "./remote-settings"
 import { RepositorySettings } from "./repository-settings"
+import { TeamSettings } from "./team-settings"
 
 const INPUT =
   "h-9 w-full rounded-xl border border-border bg-transparent px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
@@ -100,6 +102,22 @@ export function SettingsPage() {
           <ul className="flex flex-col gap-0.5">
             <li>
               <a
+                href="#section-team"
+                className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Team
+              </a>
+            </li>
+            <li>
+              <a
+                href="#section-remote"
+                className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Remote access
+              </a>
+            </li>
+            <li>
+              <a
                 href="#section-repository"
                 className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -122,6 +140,10 @@ export function SettingsPage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth">
           <div className="mx-auto flex max-w-2xl flex-col gap-10 px-5 py-6 pb-28">
+            <TeamSettings />
+
+            <RemoteSettings />
+
             <RepositorySettings />
 
             <SettingsSection id="server">

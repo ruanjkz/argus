@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { NodeServices } from "@effect/platform-node"
 import { Console, Deferred, Duration, Effect, Layer, Schedule, Stream } from "effect"
 
+import { AccountStore } from "./accounts.ts"
 import { FAKE_RESOURCES_FOLDER, FAKE_SERVER_SCRIPT, isPackaged, panelAvailable } from "./assets.ts"
 import { ServerConfig } from "./config.ts"
 import { Diagnostics } from "./diagnostics/service.ts"
@@ -14,6 +15,7 @@ import { DEFAULT_PANEL_PORT, readArgusFile, toServerSettings, type ArgusFile } f
 import { makeApiHandler } from "./http/api.ts"
 import { startHost, type HttpHost } from "./http/host.ts"
 import { makeSetupHandler } from "./http/setup.ts"
+import { makeTeamHandler } from "./http/team.ts"
 import { Supervisor } from "./supervisor.ts"
 
 export const VERSION = "0.1.0"
@@ -86,11 +88,13 @@ export const openBrowser = (url: string) => {
   execFile(command, args, { windowsHide: true }, () => undefined)
 }
 
-const runServer = (host: HttpHost, file: ArgusFile, options: StartOptions) =>
+const runServer = (host: HttpHost, accounts: AccountStore, file: ArgusFile, options: StartOptions) =>
   Effect.gen(function*() {
     const supervisor = yield* Supervisor
     yield* Diagnostics
-    host.use(yield* makeApiHandler({ home: options.home, version: VERSION }), file.token)
+    const api = yield* makeApiHandler({ home: options.home, version: VERSION })
+    const team = makeTeamHandler(accounts, host, options.home)
+    host.use(async (request, response, route, context) => (await team(request, response, route, context)) || api(request, response, route, context), file.token)
     yield* scheduler(options)
     yield* supervisor.events.pipe(
       Stream.runForEach((event) => {
@@ -119,7 +123,8 @@ export const startArgus = (options: StartOptions) =>
   Effect.gen(function*() {
     const existing = readArgusFile(options.home)
     const port = Number(process.env.ARGUS_PORT) || existing?.panelPort || DEFAULT_PANEL_PORT
-    const host = yield* startHost(port).pipe(
+    const accounts = new AccountStore(options.home)
+    const host = yield* startHost({ port, remote: existing?.remote === true, accounts }).pipe(
       Effect.mapError((error) =>
         new Error(error.message.includes("EADDRINUSE") ? `Port ${port} is busy. Is Argus already running?` : error.message)
       )
@@ -136,7 +141,7 @@ export const startArgus = (options: StartOptions) =>
     let file = existing
     if (!file) {
       const installed = yield* Deferred.make<ArgusFile>()
-      host.use(makeSetupHandler(options.home, (next) => Effect.runFork(Deferred.succeed(installed, next))))
+      host.use(makeSetupHandler(options.home, accounts, (next) => Effect.runFork(Deferred.succeed(installed, next))), undefined, true)
       yield* Console.log(`  First run. Finish the setup in the browser: ${BOLD}${url}${RESET}`)
       if (options.open) openBrowser(url)
       file = yield* Deferred.await(installed)
@@ -147,5 +152,6 @@ export const startArgus = (options: StartOptions) =>
     }
 
     const ready = file
-    return yield* runServer(host, ready, options).pipe(Effect.provide(layerFor(ready, options)))
+    if (host.remote) yield* Console.log(`  Remote access is on. Other computers open http://<this machine>:${port}`)
+    return yield* runServer(host, accounts, ready, options).pipe(Effect.provide(layerFor(ready, options)))
   }).pipe(Effect.scoped)
