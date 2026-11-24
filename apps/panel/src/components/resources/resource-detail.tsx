@@ -166,7 +166,7 @@ export function ResourceDetail({
             </Section>
           ) : null}
 
-          <Section title="Performance" meta={running ? `${share.toFixed(1)}% of the ${TICK_BUDGET_MS} ms tick` : undefined}>
+          <Section title="Performance" meta={running && resource.liveCpuMs >= 0 ? `${share.toFixed(1)}% of the ${TICK_BUDGET_MS} ms tick` : undefined}>
             <DetailRows
               rows={[
                 ["Server tick", running ? formatCpu(resource.liveCpuMs) : "—"],

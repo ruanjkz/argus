@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
+import { useAgent } from "@/components/agent-store"
+import { useLiveResources } from "@/components/live-resources"
 import { useLiveServer } from "@/components/live-server"
 import { useSettings } from "@/components/settings-store"
 import { RESOURCE_CATALOG, type ResourceInfo } from "@/lib/resources"
@@ -162,9 +164,16 @@ export function ResourcesProvider({ children }: { children: ReactNode }) {
 
   const byName = useMemo(() => new Map(resources.map((resource) => [resource.name, resource])), [resources])
 
+  const agentLive = useAgent().mode === "live"
+  const liveResources = useLiveResources(agentLive, incidents)
+  const liveByName = useMemo(() => new Map(liveResources.map((resource) => [resource.name, resource])), [liveResources])
+
   const value = useMemo<ResourcesStore>(
-    () => ({ resources, byName, serverOnline, start, stop, restart }),
-    [resources, byName, serverOnline, start, stop, restart],
+    () =>
+      agentLive
+        ? { resources: liveResources, byName: liveByName, serverOnline, start, stop, restart }
+        : { resources, byName, serverOnline, start, stop, restart },
+    [agentLive, liveResources, liveByName, resources, byName, serverOnline, start, stop, restart],
   )
 
   return <ResourcesContext.Provider value={value}>{children}</ResourcesContext.Provider>

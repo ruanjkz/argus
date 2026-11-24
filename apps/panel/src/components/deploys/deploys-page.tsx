@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { GitBranchIcon, Loading03Icon, RefreshIcon } from "@hugeicons/core-free-icons"
 
+import { useAgent } from "@/components/agent-store"
 import { useDeploys, type DeployView } from "@/components/deploys-store"
 import { IconSwap } from "@/components/motion-primitives"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -16,11 +17,13 @@ import { t } from "@/lib/i18n"
 import { DeployDetail } from "./deploy-detail"
 import { BranchPicker } from "./branch-picker"
 import { ConnectWizard } from "./connect-wizard"
+import { LiveDeploys } from "./live-deploys"
 import { DEPLOY_STATUS } from "./deploy-status"
 import { DriftPanel } from "./drift-panel"
 
 export function DeploysPage() {
   const { deploys, byId, building, branch, connection, check } = useDeploys()
+  const agentLive = useAgent().mode === "live"
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -71,12 +74,14 @@ export function DeploysPage() {
     listRef.current?.querySelector<HTMLButtonElement>(`[data-deploy-id="${next.id}"]`)?.focus()
   }
 
+  if (agentLive) return <LiveDeploys />
+
   if (!connection) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <header className="border-b border-border/70 px-5 py-3">
           <h1 className="truncate text-sm font-semibold">{t("Deploys")}</h1>
-          <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">no repository connected</p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{t("no repository connected")}</p>
         </header>
         <div className="min-h-0 flex-1">
           <ConnectWizard />
@@ -84,6 +89,7 @@ export function DeploysPage() {
       </div>
     )
   }
+
 
   return (
     <div className="flex h-full min-h-0 flex-col">

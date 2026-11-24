@@ -40,7 +40,7 @@ const make = Effect.gen(function*() {
       const path = entry.path.startsWith(prefix) ? entry.path.slice(prefix.length) : entry.path
       const resource = resourceOfPath(path)
       return { path, state: entry.state, ...(resource === undefined ? {} : { resource }) }
-    })
+    }).filter((entry) => !entry.path.startsWith("[argus]/"))
   }).pipe(Effect.orElseSucceed(() => [] as Array<DriftEntry>))
 
   const blame = (resource: string, file: string, line: number): Effect.Effect<Option.Option<Blame>> =>

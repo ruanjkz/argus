@@ -2,7 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
+import { useAgent } from "@/components/agent-store"
 import { useConsole } from "@/components/console-store"
+import { useLivePlayers } from "@/components/live-players"
 import { useLiveServer } from "@/components/live-server"
 import { recordForManualBan, recordsForPlayer, type BanRecord, type ManualBan } from "@/lib/bans"
 import { ONLINE_ORDER, ROSTER, type BanInfo, type HistoryEntry, type HistoryType, type Identifier, type IdentifierKind, type RosterPlayer } from "@/lib/players"
@@ -229,10 +231,31 @@ export function PlayersProvider({ children }: { children: ReactNode }) {
     [consoleStore],
   )
 
-  const value = useMemo<PlayersStore>(
-    () => ({ players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message }),
-    [players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message],
-  )
+  const agentMode = useAgent().mode
+  const reportError = useCallback((text: string) => consoleStore.announce(text), [consoleStore])
+  const livePlayers = useLivePlayers(agentMode === "live", reportError)
+  const liveByKey = useMemo(() => new Map(livePlayers.players.map((player) => [player.key, player])), [livePlayers.players])
+
+  const value = useMemo<PlayersStore>(() => {
+    if (agentMode === "live") {
+      return {
+        players: livePlayers.players,
+        online: livePlayers.players.filter((player) => player.online),
+        byKey: liveByKey,
+        banRecords: livePlayers.bans,
+        elapsed: 0,
+        warn: livePlayers.warn,
+        kick: livePlayers.kick,
+        ban: livePlayers.ban,
+        unban: livePlayers.unban,
+        banIdentifier: livePlayers.banIdentifier,
+        revokeManualBan: livePlayers.revokeManualBan,
+        note: livePlayers.note,
+        message: livePlayers.message,
+      }
+    }
+    return { players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message }
+  }, [agentMode, livePlayers, liveByKey, players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message])
 
   return <PlayersContext.Provider value={value}>{children}</PlayersContext.Provider>
 }

@@ -57,11 +57,13 @@ export const RESOURCE_CATALOG: ResourceInfo[] = ENTRIES.map((entry) => ({
 export const TICK_BUDGET_MS = 50
 
 export function formatMemory(kilobytes: number) {
-  if (kilobytes <= 0) return "0 KB"
+  if (kilobytes < 0) return "—"
+  if (kilobytes === 0) return "0 KB"
   if (kilobytes < 1024) return `${kilobytes} KB`
   return `${(kilobytes / 1024).toFixed(1)} MB`
 }
 
 export function formatCpu(milliseconds: number) {
+  if (milliseconds < 0) return "—"
   return `${milliseconds.toFixed(2)} ms`
 }
