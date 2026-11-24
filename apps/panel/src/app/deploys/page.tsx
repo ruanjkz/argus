@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/coming-soon"
+import { DeploysPage } from "@/components/deploys/deploys-page"
 
-export default function DeploysPage() {
-  return <ComingSoon title="Deploys" description="Git deploys staged on a second instance and applied at the next restart." />
+export default function Page() {
+  return <DeploysPage />
 }

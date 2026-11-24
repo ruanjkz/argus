@@ -6,6 +6,7 @@ import { Menu01Icon } from "@hugeicons/core-free-icons"
 
 import { ArgusMark } from "@/components/argus-mark"
 import { ConsoleProvider } from "@/components/console-store"
+import { DeploysProvider } from "@/components/deploys-store"
 import { PlayersProvider } from "@/components/players-store"
 import { LiveServerProvider } from "@/components/live-server"
 import { ResourcesProvider } from "@/components/resources-store"
@@ -89,7 +90,9 @@ function ServerProviders({ children }: { children: ReactNode }) {
       <LiveServerProvider>
         <ResourcesProvider>
           <ConsoleProvider>
-            <PlayersProvider>{children}</PlayersProvider>
+            <PlayersProvider>
+              <DeploysProvider>{children}</DeploysProvider>
+            </PlayersProvider>
           </ConsoleProvider>
         </ResourcesProvider>
       </LiveServerProvider>
