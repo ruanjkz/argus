@@ -1,79 +1,71 @@
 # Argus
 
-An open source server manager for FiveM, inspired by txAdmin. It runs on the same machine as your server: one command sets it up, one command starts the panel, the agent and FXServer together.
+An open source server manager for FiveM, inspired by txAdmin. It runs on the same machine as your server and gives you and your staff a panel for the console, players, bans, resources and deploys.
 
-Early development. The server lifecycle, console, problems, settings and repository connection are real. Players, bans, resources and the deploy history in the panel still show sample data, and the panel says so on those pages.
+Early development: it has been tested end to end against a simulated FXServer, not yet against a real one.
 
-## Install
+## Install on Windows
 
-You need [Node.js 22](https://nodejs.org) or newer and [Git](https://git-scm.com) (Git also brings `ssh-keygen`, used to connect a repository).
+1. Download `Argus.exe` from the [latest release](https://github.com/ruanjkz/argus/releases/latest).
+2. Put it anywhere on the machine that runs FXServer and open it.
+3. Your browser opens the setup. Pick your server from the list (or paste its folder), confirm where `FXServer.exe` is, create your owner account and click Install.
+
+Argus copies its small resource to `resources/[argus]/argus`, adds `ensure argus` to `server.cfg` (keeping the original as `server.cfg.before-argus`) and starts the server. Keep the Argus window open; closing it stops the server gracefully.
+
+Windows may warn that the file is from an unknown publisher, because the executable is not signed yet.
+
+## Install on Linux, or from source
+
+Needs [Node.js 22](https://nodejs.org) or newer and [Git](https://git-scm.com).
 
 ```bash
 git clone https://github.com/ruanjkz/argus.git
 cd argus
 npm run setup
 npm link
+argus
 ```
 
-`npm link` puts the `argus` command on your PATH. Without it, use `npm run argus -- <command>` inside the folder.
+`argus` opens the same setup in the browser. Prefer the terminal? `argus init` asks two questions instead. `argus doctor` checks what is missing, and `argus --simulate` runs a fake FXServer so you can look around without touching a server.
 
-## Link your server
+## Your staff
 
-```bash
-argus init
-```
+The owner creates logins in Settings, Team. Each member gets a temporary password and must pick their own on the first sign in. Roles:
 
-It asks two things: the server data folder (the one with `server.cfg` and `resources`) and where `FXServer.exe` is, which it usually guesses. Then it shows what it will do and waits for a yes:
-
-- copies the `argus` resource to `resources/[argus]/argus`
-- adds `ensure argus` to the end of `server.cfg`, keeping the original as `server.cfg.before-argus`
-- saves its settings to `~/.argus/argus.json`
-
-It never starts or stops your server during setup. For scripts: `argus init --data <folder> --fxserver <path> --name <name> --yes`.
-
-## Run
-
-```bash
-argus start
-```
-
-Opens the panel on http://localhost:3200 and starts FXServer. Ctrl+C stops the server gracefully, then Argus. The panel and the agent only listen on 127.0.0.1.
-
-```bash
-argus start --simulate   # a fake FXServer, nothing touches your server
-argus doctor             # checks Node, Git, the settings, the resource and the ports
-```
-
-## How it fits together
-
-| Path | What it is |
+| Role | Can |
 | --- | --- |
-| `apps/agent` | The `argus` CLI and the agent: supervises FXServer, reads its output, finds problems, talks to Git. Built with [Effect](https://effect.website). |
-| `apps/panel` | The panel (Next.js). Talks to the agent through `/api/agent`, which adds the agent token on the server side. |
-| `apps/agent/resource/argus` | The FiveM resource that sends a heartbeat with the player count. |
+| Owner | Everything, including settings, the repository and remote access |
+| Admin | Start, stop and restart, run any command, manage moderators, revoke bans |
+| Moderator | Watch the console, say, kick, warn and ban players |
 
-The landing page lives in [argus-site](https://github.com/ruanjkz/argus-site).
+To let staff in from their own computers, the owner turns on Settings, Remote access. Argus then listens on every network of the machine. Open TCP 3200 in the firewall, and put Argus behind HTTPS (for example a Cloudflare Tunnel) before using it over the internet, since plain http sends passwords unencrypted.
 
-## Agent
+## What works
 
-- Spawns FXServer, streams stdout and stderr, and reads structured traces from fd3.
-- Marks the server online when the `argus` resource sends its first heartbeat.
-- Restarts on crash, boot timeout or lost heartbeat, with backoff, and gives up after repeated failed starts.
-- Restarts at the daily times set in the panel, warning players in chat first.
-- Stops gracefully with `quit`, then kills the process tree if it does not exit in time.
-- Groups script errors from Lua and JavaScript resources, stalls, hangs and outages into problems, measures their impact, and suggests a likely cause from fixed rules. Nothing in Argus depends on AI.
-- Reads source maps, so an error in a TypeScript resource points at the original `.ts` line.
-- With Git: lists files edited on the server outside a commit, and names the commit that introduced each error.
-- Connects a repository with a read-only deploy key it creates on your machine. No account login, no token.
+- **Server:** start, stop and restart, crash and hang detection with automatic restarts, daily restarts with chat warnings.
+- **Console:** live output and commands, filtered by role.
+- **Problems:** script errors from Lua and JavaScript resources, stalls and outages grouped with impact and a likely fix from fixed rules. Nothing in Argus depends on AI. TypeScript errors point at the original `.ts` line through source maps, and with Git, at the commit that introduced them.
+- **Players:** who is online with their identifiers, play time, history, and accounts linked by token, Discord or IP. Warn, kick, message, note and ban.
+- **Bans:** by player or by identifier, with expiry and revoke. The `argus` resource enforces them when players connect.
+- **Resources:** everything in the resources folder with its live state, dependencies, and ensure, start and stop per resource or per `[folder]`.
+- **Deploys:** connect a repository with a read-only deploy key Argus creates. Argus shows the history, fetches new commits, fast forwards the resources folder and restarts, and refuses while files were edited on the server outside Git.
+- **Languages:** English, Spanish and Brazilian Portuguese.
 
 ## Development
 
+| Path | What it is |
+| --- | --- |
+| `apps/agent` | The `argus` CLI and agent: supervises FXServer, serves the panel and its API on one port. Built with [Effect](https://effect.website). |
+| `apps/panel` | The panel (Next.js static export). Without a running agent it opens in demo mode with sample data. |
+| `apps/agent/resource/argus` | The FiveM resource: heartbeat, players, resource states, bans, warn and kick. |
+
 ```bash
-npm test                                   # agent tests, all against a simulated server
-npm run dev --prefix apps/panel -- --port 3200
+npm test                                         # agent tests, all against a simulated server
+npm run dev --prefix apps/panel -- --port 3200   # panel in demo mode
+npm run build:exe                                # builds apps/agent/dist/Argus.exe
 ```
 
-Without a running agent the panel starts in demo mode with sample data.
+The landing page lives in [argus-site](https://github.com/ruanjkz/argus-site).
 
 ## License
 
