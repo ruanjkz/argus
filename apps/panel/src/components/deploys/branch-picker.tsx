@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { GitBranchIcon, UnfoldMoreIcon } from "@hugeicons/core-free-icons"
+import { GitBranchIcon, Search01Icon, UnfoldMoreIcon } from "@hugeicons/core-free-icons"
 
 import { useDeploys } from "@/components/deploys-store"
 import { Button } from "@/components/ui/button"
@@ -21,11 +21,35 @@ import { formatAgo } from "@/lib/mock"
 export function BranchPicker() {
   const { branch, building, drift, switchBranch } = useDeploys()
   const [target, setTarget] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
   const targetInfo = BRANCHES.find((entry) => entry.name === target)
+  const needle = query.trim().toLowerCase()
+  const matches = needle
+    ? BRANCHES.filter(
+        (entry) =>
+          entry.name.toLowerCase().includes(needle) ||
+          entry.message.toLowerCase().includes(needle) ||
+          entry.author.toLowerCase().includes(needle) ||
+          entry.commit.includes(needle),
+      )
+    : BRANCHES
+
+  function pick(name: string) {
+    setOpen(false)
+    setQuery("")
+    if (name !== branch) setTarget(name)
+  }
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setQuery("")
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -40,8 +64,33 @@ export function BranchPicker() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72 rounded-xl">
           <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Deploy from branch</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={branch} onValueChange={(name) => name !== branch && setTarget(name)}>
-            {BRANCHES.map((entry) => (
+          <label className="mx-1 mb-1 flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5 text-muted-foreground focus-within:ring-2 focus-within:ring-ring">
+            <HugeiconsIcon icon={Search01Icon} strokeWidth={1.75} className="size-3.5 shrink-0" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && matches[0]) {
+                  event.preventDefault()
+                  pick(matches[0].name)
+                  return
+                }
+                if (event.key !== "ArrowDown" && event.key !== "Escape" && event.key !== "Tab") event.stopPropagation()
+              }}
+              autoFocus
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="Find a branch"
+              aria-label="Find a branch"
+              className="min-w-0 flex-1 bg-transparent font-mono text-xs text-foreground outline-none placeholder:font-sans placeholder:text-muted-foreground"
+            />
+            {query ? <span className="font-mono text-[11px] tabular-nums">{matches.length}</span> : null}
+          </label>
+          {matches.length === 0 ? (
+            <p className="px-3 py-3 text-xs wrap-anywhere text-muted-foreground">No branch matches “{query.trim()}”.</p>
+          ) : null}
+          <DropdownMenuRadioGroup value={branch} onValueChange={pick} className="max-h-64 overflow-y-auto">
+            {matches.map((entry) => (
               <DropdownMenuRadioItem key={entry.name} value={entry.name} className="items-start py-1.5">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-xs">{entry.name}</span>
