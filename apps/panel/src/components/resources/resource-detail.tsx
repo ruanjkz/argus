@@ -25,8 +25,17 @@ function listNames(names: string[]) {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
 }
 
-export function ResourceDetail({ resource, onSelect }: { resource: ResourceView; onSelect: (name: string) => void }) {
-  const { byName, serverOnline } = useResources()
+export function ResourceDetail({
+  resource,
+  onSelect,
+  onEnsureFolder,
+}: {
+  resource: ResourceView
+  onSelect: (name: string) => void
+  onEnsureFolder: (folder: string) => void
+}) {
+  const { byName, resources, serverOnline } = useResources()
+  const folderSize = resources.filter((entry) => entry.folder === resource.folder).length
   const consoleStore = useConsole()
   const live = useLiveServer()
   const [confirmStop, setConfirmStop] = useState(false)
@@ -166,6 +175,23 @@ export function ResourceDetail({ resource, onSelect }: { resource: ResourceView;
 
           <Section title="Used by" meta={`${resource.dependents.length}`}>
             <ResourceLinks names={resource.dependents} empty="No other resource depends on this one." onSelect={onSelect} />
+          </Section>
+
+          <Section title="Folder" meta={resource.folder}>
+            <div className="flex items-center justify-between gap-3 px-2">
+              <p className="min-w-0 text-xs text-muted-foreground">
+                {folderSize === 1 ? "Only resource in this folder." : `Shares the folder with ${folderSize - 1} other ${folderSize === 2 ? "resource" : "resources"}.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => onEnsureFolder(resource.folder)}
+                disabled={!serverOnline}
+                className={cn(ACTION_BUTTON, "shrink-0 border border-border font-mono hover:bg-muted")}
+              >
+                <HugeiconsIcon icon={RefreshIcon} strokeWidth={1.75} className="size-3.5" />
+                {`ensure ${resource.folder}`}
+              </button>
+            </div>
           </Section>
 
           <Section title="Manifest">

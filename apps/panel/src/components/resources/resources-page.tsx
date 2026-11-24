@@ -244,7 +244,7 @@ export function ResourcesPage() {
         {desktop ? (
           <aside aria-label="Resource details" className="hidden w-[25rem] shrink-0 lg:block">
             {selected ? (
-              <ResourceDetail resource={selected} onSelect={select} />
+              <ResourceDetail resource={selected} onSelect={select} onEnsureFolder={requestEnsure} />
             ) : (
               <div className="px-6 pt-[14vh] text-center text-xs text-muted-foreground">Pick a resource to see its details.</div>
             )}
@@ -256,7 +256,7 @@ export function ResourcesPage() {
         <Sheet open={sheetOpen && Boolean(selected)} onOpenChange={setSheetOpen}>
           <SheetContent side="right" className="bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
             <SheetTitle className="sr-only">{selected?.name ?? "Resource"}</SheetTitle>
-            {selected ? <ResourceDetail resource={selected} onSelect={select} /> : null}
+            {selected ? <ResourceDetail resource={selected} onSelect={select} onEnsureFolder={requestEnsure} /> : null}
           </SheetContent>
         </Sheet>
       ) : null}
