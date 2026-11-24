@@ -7,6 +7,7 @@ import { Config, Console, Duration, Effect, Layer, Option, Stream } from "effect
 import { ServerConfig } from "./config.ts"
 import type { Problem } from "./diagnostics/model.ts"
 import { Diagnostics } from "./diagnostics/service.ts"
+import { SourceLocator } from "./diagnostics/source-locator.ts"
 import type { SupervisorEvent } from "./domain.ts"
 import { Supervisor } from "./supervisor.ts"
 
@@ -14,12 +15,14 @@ const DIM = "\u001b[2m"
 const RESET = "\u001b[0m"
 
 const fakeServer = fileURLToPath(new URL("../fixtures/fake-fxserver.mjs", import.meta.url))
+const fakeResources = fileURLToPath(new URL("../fixtures/resources", import.meta.url))
 
 const ConfigLayer = Layer.unwrap(
   Effect.gen(function*() {
     const executable = yield* Config.option(Config.String("ARGUS_FXSERVER"))
     const args = yield* Config.String("ARGUS_FXSERVER_ARGS").pipe(Config.withDefault(""))
     const cwd = yield* Config.option(Config.String("ARGUS_FXSERVER_CWD"))
+    const resources = yield* Config.option(Config.String("ARGUS_RESOURCES"))
 
     if (Option.isNone(executable)) {
       yield* Console.log(`${DIM}[argus] ARGUS_FXSERVER is not set, running the simulated FXServer${RESET}`)
@@ -27,6 +30,7 @@ const ConfigLayer = Layer.unwrap(
         executable: process.execPath,
         args: [fakeServer],
         env: { FAKE_HEARTBEAT_MS: "1000" },
+        resourcesPath: fakeResources,
         bootTimeout: Duration.seconds(15),
         heartbeatTimeout: Duration.seconds(10),
         stopTimeout: Duration.seconds(5)
@@ -36,7 +40,9 @@ const ConfigLayer = Layer.unwrap(
     return ServerConfig.layer({
       executable: executable.value,
       args: args.split(" ").filter((arg) => arg.length > 0),
-      cwd: Option.getOrUndefined(cwd)
+      cwd: Option.getOrUndefined(cwd),
+      resourcesPath: Option.getOrUndefined(resources) ??
+        Option.getOrUndefined(Option.map(cwd, (folder) => `${folder}/resources`))
     })
   })
 )
@@ -59,8 +65,11 @@ const render = (event: SupervisorEvent) => {
 }
 
 const describeProblem = (problem: Problem) => {
+  const bundle = problem.location ? `${problem.location.file}:${problem.location.line}` : undefined
   const where = problem.location
-    ? `${problem.location.resource}/${problem.location.file}:${problem.location.line}`
+    ? problem.source
+      ? `${problem.location.resource}/${problem.source.file}:${problem.source.line} (${bundle})`
+      : `${problem.location.resource}/${bundle}`
     : problem.resource ?? problem.kind
   const lines = [
     `${DIM}[argus]${RESET} ${problem.impact.severity.toUpperCase()}  ${where}  ${problem.message}`,
@@ -131,6 +140,7 @@ const program = Effect.gen(function*() {
 
 const MainLayer = Diagnostics.layer.pipe(
   Layer.provideMerge(Supervisor.layer),
+  Layer.provide(SourceLocator.layer),
   Layer.provide(ConfigLayer),
   Layer.provide(NodeServices.layer)
 )

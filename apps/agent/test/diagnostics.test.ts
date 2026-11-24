@@ -27,7 +27,33 @@ describe("parseSignal", () => {
       kind: "script-error",
       resource: "shop",
       location: { resource: "shop", file: "server/main.lua", line: 88 },
-      message: "attempt to index a nil value (field 'price')"
+      message: "attempt to index a nil value (field 'price')",
+      runtime: "lua",
+      origin: undefined
+    })
+  })
+
+  it("reads a JavaScript error and keeps event names that contain a colon", () => {
+    const signal = parseSignal(
+      "[      script:market] ^1SCRIPT ERROR in event `market:buy': TypeError: Cannot read properties of undefined (reading 'amount')^7"
+    )
+    assert.deepStrictEqual(signal, {
+      kind: "script-error",
+      resource: "market",
+      location: undefined,
+      message: "TypeError: Cannot read properties of undefined (reading 'amount')",
+      runtime: "javascript",
+      origin: "event `market:buy'"
+    })
+    const rejection = parseSignal("[      script:market] SCRIPT ERROR in promise (unhandled rejection): Error: timeout")
+    assert.strictEqual(rejection?.kind === "script-error" ? rejection.origin : "", "promise (unhandled rejection)")
+  })
+
+  it("reads stack frames so a JavaScript error can get its file and line", () => {
+    assert.deepStrictEqual(parseSignal("[      script:market] > priceOf (@market/dist/server.js:7)"), {
+      kind: "stack-frame",
+      resource: "market",
+      location: { resource: "market", file: "dist/server.js", line: 7 }
     })
   })
 
@@ -52,9 +78,9 @@ describe("parseSignal", () => {
     })
   })
 
-  it("ignores ordinary console lines and stack frames", () => {
+  it("ignores ordinary console lines", () => {
     assert.isUndefined(parseSignal("[          resources] Started resource shop"))
-    assert.isUndefined(parseSignal("[        script:shop] > handler (@shop/server/main.lua:88)"))
+    assert.isUndefined(parseSignal("[        script:shop] player 12 bought a bandage"))
   })
 
   it("groups messages that only differ by numbers", () => {
@@ -117,6 +143,37 @@ describe("diagnose", () => {
     )
   })
 
+  it("explains JavaScript errors and prefers the original TypeScript line", () => {
+    const bundle = { resource: "market", file: "dist/server.js", line: 7 }
+    const read = diagnose({
+      kind: "script-error",
+      resource: "market",
+      location: bundle,
+      source: { file: "src/server.ts", line: 17 },
+      message: "TypeError: Cannot read properties of undefined (reading 'amount')"
+    })
+    assert.strictEqual(read?.rule, "js-read-missing")
+    assert.include(read?.cause ?? "", "market/src/server.ts:17")
+    assert.include(read?.cause ?? "", "\"amount\"")
+
+    const rules = [
+      ["TypeError: exports.economy.getPrice is not a function", "js-not-a-function"],
+      ["ReferenceError: GetPlayerPing is not defined", "js-not-defined"],
+      ["Error: Cannot find module './config'", "js-module-missing"],
+      ["SyntaxError: Unexpected token '}'", "js-syntax"],
+      ["RangeError: Maximum call stack size exceeded", "js-stack-overflow"]
+    ] as const
+    for (const [message, rule] of rules) {
+      assert.strictEqual(diagnose({ kind: "script-error", resource: "market", location: bundle, message })?.rule, rule)
+    }
+  })
+
+  it("falls back to the unhandled rejection rule only for promises", () => {
+    const context = { kind: "script-error", resource: "market", location: undefined, message: "Error: request timed out" } as const
+    assert.strictEqual(diagnose({ ...context, origin: "promise (unhandled rejection)" })?.rule, "js-unhandled-rejection")
+    assert.isUndefined(diagnose({ ...context, origin: "event `market:buy'" }))
+  })
+
   it("returns nothing when no rule matches", () => {
     assert.isUndefined(
       diagnose({ kind: "script-error", resource: "shop", location, message: "something nobody has seen before" })
@@ -175,15 +232,23 @@ describe("Diagnostics", () => {
       yield* supervisor.start
 
       const problems = yield* waitForProblems(diagnostics, (list) =>
-        list.some((problem) => problem.kind === "script-error" && problem.count === 3) &&
+        list.some((problem) => problem.resource === "shop" && problem.count === 3) &&
+        list.some((problem) => problem.resource === "market" && problem.count === 2) &&
         list.some((problem) => problem.kind === "thread-hang" && problem.impact.worstMs === 4100) &&
         list.some((problem) => problem.kind === "hitch"))
 
-      const scriptError = problems.find((problem) => problem.kind === "script-error")
-      assert.strictEqual(scriptError?.resource, "shop")
+      const scriptError = problems.find((problem) => problem.resource === "shop")
+      assert.strictEqual(scriptError?.runtime, "lua")
       assert.deepStrictEqual(scriptError?.location, { resource: "shop", file: "server/main.lua", line: 88 })
       assert.strictEqual(scriptError?.diagnosis?.rule, "lua-index-nil")
       assert.strictEqual(scriptError?.impact.players, 48)
+
+      const typed = problems.find((problem) => problem.resource === "market")
+      assert.strictEqual(typed?.runtime, "javascript")
+      assert.deepStrictEqual(typed?.location, { resource: "market", file: "dist/server.js", line: 7 })
+      assert.deepStrictEqual(typed?.source, { file: "src/server.ts", line: 17 })
+      assert.strictEqual(typed?.diagnosis?.rule, "js-read-missing")
+      assert.include(typed?.diagnosis?.cause ?? "", "market/src/server.ts:17")
 
       const hang = problems.find((problem) => problem.kind === "thread-hang")
       assert.strictEqual(hang?.resource, "inventory")

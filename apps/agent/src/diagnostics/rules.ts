@@ -1,10 +1,12 @@
-import type { CodeLocation, Diagnosis, ProblemKind } from "./model.ts"
+import type { CodeLocation, Diagnosis, ProblemKind, SourceLocation } from "./model.ts"
 
 export interface RuleContext {
   readonly kind: ProblemKind
   readonly resource: string | undefined
   readonly location: CodeLocation | undefined
   readonly message: string
+  readonly source?: SourceLocation | undefined
+  readonly origin?: string | undefined
 }
 
 interface Finding {
@@ -16,11 +18,15 @@ interface Rule {
   readonly id: string
   readonly kinds: ReadonlyArray<ProblemKind>
   readonly pattern?: RegExp
+  readonly applies?: (context: RuleContext) => boolean
   readonly explain: (match: RegExpExecArray | undefined, context: RuleContext) => Finding
 }
 
-const place = (context: RuleContext) =>
-  context.location ? `${context.location.resource}/${context.location.file}:${context.location.line}` : "that line"
+const place = (context: RuleContext) => {
+  if (!context.location) return "that line"
+  const target = context.source ?? context.location
+  return `${context.location.resource}/${target.file}:${target.line}`
+}
 
 const owner = (context: RuleContext) => context.resource ?? "the resource"
 
@@ -106,6 +112,103 @@ export const RULES: ReadonlyArray<Rule> = [
     })
   },
   {
+    id: "js-read-missing",
+    kinds: CODE_KINDS,
+    pattern: /Cannot read propert(?:y|ies) of (undefined|null)(?: \(reading '([^']+)'\))?/,
+    explain: (match, context) => ({
+      cause: match?.[2]
+        ? `The code at ${place(context)} reads "${match[2]}" from a value that is ${match[1]}`
+        : `The code at ${place(context)} reads a property from a value that is ${match?.[1] ?? "undefined"}`,
+      steps: [
+        `Find where that value comes from before ${place(context)} and handle the case where it is missing`,
+        "If it comes from an event argument, a config file or a database row, confirm it is really sent"
+      ]
+    })
+  },
+  {
+    id: "js-write-missing",
+    kinds: CODE_KINDS,
+    pattern: /Cannot set propert(?:y|ies) of (undefined|null)(?: \(setting '([^']+)'\))?/,
+    explain: (match, context) => ({
+      cause: match?.[2]
+        ? `The code at ${place(context)} sets "${match[2]}" on a value that is ${match[1]}`
+        : `The code at ${place(context)} sets a property on a value that is ${match?.[1] ?? "undefined"}`,
+      steps: ["Create the object before writing to it", "Check why it is missing at that point"]
+    })
+  },
+  {
+    id: "js-not-a-function",
+    kinds: CODE_KINDS,
+    pattern: /(\S+) is not a function/,
+    explain: (match, context) => ({
+      cause: `${match?.[1] ?? "A value"} is not a function when ${place(context)} calls it`,
+      steps: [
+        "Check the name and that it is imported or exported correctly",
+        `If it is an export from another resource, make sure that resource starts before ${owner(context)}`
+      ]
+    })
+  },
+  {
+    id: "js-not-defined",
+    kinds: CODE_KINDS,
+    pattern: /(\S+) is not defined/,
+    explain: (match, context) => ({
+      cause: `${match?.[1] ?? "A name"} does not exist where ${place(context)} uses it`,
+      steps: [
+        "Check for a typo or a missing import",
+        "If it is a FiveM native, check that this file runs on the side where that native exists"
+      ]
+    })
+  },
+  {
+    id: "js-module-missing",
+    kinds: CODE_KINDS,
+    pattern: /Cannot find module '([^']+)'/,
+    explain: (match, context) => ({
+      cause: `The module ${match?.[1] ?? ""} could not be loaded`.replace("  ", " "),
+      steps: [
+        `Install the dependencies and rebuild ${owner(context)}`,
+        "If it is a local file, check the path and that the build output includes it"
+      ]
+    })
+  },
+  {
+    id: "js-not-iterable",
+    kinds: CODE_KINDS,
+    pattern: /(\S+) is not iterable/,
+    explain: (match, context) => ({
+      cause: `${match?.[1] ?? "A value"} is not a list where ${place(context)} loops over it`,
+      steps: ["Check what the value really is at that point", "Give it an empty list as a default"]
+    })
+  },
+  {
+    id: "js-invalid-json",
+    kinds: CODE_KINDS,
+    pattern: /is not valid JSON|in JSON at position|Unexpected end of JSON input/,
+    explain: (_match, context) => ({
+      cause: `The code at ${place(context)} parses text that is not valid JSON`,
+      steps: ["Check the file or the message being parsed", "Wrap the parse in a try and handle bad input"]
+    })
+  },
+  {
+    id: "js-stack-overflow",
+    kinds: CODE_KINDS,
+    pattern: /Maximum call stack size exceeded/,
+    explain: (_match, context) => ({
+      cause: `A function keeps calling itself until the stack runs out, around ${place(context)}`,
+      steps: ["Look for recursion without a stop condition", "Check for two event handlers that trigger each other"]
+    })
+  },
+  {
+    id: "js-syntax",
+    kinds: CODE_KINDS,
+    pattern: /SyntaxError: /,
+    explain: (_match, context) => ({
+      cause: `The script has a syntax error at ${place(context)}, so it never loaded`,
+      steps: ["Fix the syntax or rebuild the bundle", `Run ensure ${owner(context)} again after saving`]
+    })
+  },
+  {
     id: "export-missing",
     kinds: CODE_KINDS,
     pattern: /No such export (\S+) in resource ([\w-]+)/,
@@ -154,6 +257,15 @@ export const RULES: ReadonlyArray<Rule> = [
     explain: () => ({
       cause: "The server could not connect to the database",
       steps: ["Check that the database is running", "Check mysql_connection_string in server.cfg"]
+    })
+  },
+  {
+    id: "js-unhandled-rejection",
+    kinds: CODE_KINDS,
+    applies: (context) => context.origin?.startsWith("promise") ?? false,
+    explain: (_match, context) => ({
+      cause: `A promise failed at ${place(context)} and nothing handled the failure`,
+      steps: ["Add a try and catch around the await, or a catch on the promise", "Log the failure so the next one explains itself"]
     })
   },
   {
@@ -239,6 +351,7 @@ export const RULES: ReadonlyArray<Rule> = [
 export const diagnose = (context: RuleContext): Diagnosis | undefined => {
   for (const rule of RULES) {
     if (!rule.kinds.includes(context.kind)) continue
+    if (rule.applies && !rule.applies(context)) continue
     const match = rule.pattern ? rule.pattern.exec(context.message) ?? undefined : undefined
     if (rule.pattern && !match) continue
     const finding = rule.explain(match, context)

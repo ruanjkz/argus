@@ -28,6 +28,12 @@ const scriptError = () => {
   print("script:shop", "> handler (@shop/server/main.lua:88)")
 }
 
+const javascriptError = () => {
+  print("script:market", "\u001b[31mSCRIPT ERROR in event `market:buy': TypeError: Cannot read properties of undefined (reading 'amount')\u001b[0m")
+  print("script:market", "> priceOf (@market/dist/server.js:7)")
+  print("script:market", "> <anonymous> (@market/dist/server.js:10)")
+}
+
 const hitch = (milliseconds) =>
   print("citizen-server-impl", `server thread hitch warning: timer interval of ${milliseconds} milliseconds`)
 
@@ -88,6 +94,8 @@ setTimeout(() => {
       scriptError()
       scriptError()
       scriptError()
+      javascriptError()
+      javascriptError()
       hitch(180)
       hang()
     }, failAfterMs)
@@ -116,6 +124,10 @@ input.on("line", (line) => {
   }
   if (command === "fake-error") {
     scriptError()
+    return
+  }
+  if (command === "fake-js-error") {
+    javascriptError()
     return
   }
   if (command.startsWith("fake-hitch")) {

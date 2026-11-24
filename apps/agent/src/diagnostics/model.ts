@@ -17,12 +17,21 @@ export type ProblemKind = typeof ProblemKind.Type
 export const Severity = Schema.Literals(["low", "medium", "high", "critical"])
 export type Severity = typeof Severity.Type
 
+export const Runtime = Schema.Literals(["lua", "javascript"])
+export type Runtime = typeof Runtime.Type
+
 export const CodeLocation = Schema.Struct({
   resource: Schema.String,
   file: Schema.String,
   line: Schema.Int
 })
 export type CodeLocation = typeof CodeLocation.Type
+
+export const SourceLocation = Schema.Struct({
+  file: Schema.String,
+  line: Schema.Int
+})
+export type SourceLocation = typeof SourceLocation.Type
 
 export const Impact = Schema.Struct({
   severity: Severity,
@@ -48,6 +57,8 @@ export const Problem = Schema.Struct({
   kind: ProblemKind,
   resource: Schema.optionalKey(Schema.String),
   location: Schema.optionalKey(CodeLocation),
+  source: Schema.optionalKey(SourceLocation),
+  runtime: Schema.optionalKey(Runtime),
   message: Schema.String,
   count: Schema.Int,
   firstSeen: Schema.Number,
