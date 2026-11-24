@@ -28,7 +28,7 @@ export type Deploy = {
 export const REPOSITORY = { remote: "origin", url: "git@github.com:example/arena-server.git", branch: "main", stagingPort: 30121 }
 
 export const STEP_LABEL: Record<StepId, string> = {
-  fetch: "Fetch origin/main",
+  fetch: "Fetch from origin",
   diff: "Compare resources",
   install: "Install dependencies",
   boot: "Test boot on a second instance",
@@ -184,3 +184,52 @@ export function lineTotals(changes: ResourceChange[]) {
   }
   return { added, removed, files: changes.reduce((total, change) => total + change.files.length, 0) }
 }
+
+export type DriftState = "modified" | "added" | "deleted" | "untracked"
+
+export type DriftEntry = { path: string; resource: string; state: DriftState; editedSecondsAgo: number }
+
+export const INITIAL_DRIFT: DriftEntry[] = [
+  { path: "[gameplay]/inventory/server/tick.lua", resource: "inventory", state: "modified", editedSecondsAgo: 1500 },
+  { path: "[gameplay]/shop/config.lua", resource: "shop", state: "modified", editedSecondsAgo: 5400 },
+  { path: "[gameplay]/shop/backup_config.lua", resource: "shop", state: "untracked", editedSecondsAgo: 5400 },
+]
+
+export function changedPaths(changes: ResourceChange[]) {
+  return new Set(changes.flatMap((change) => change.files.map((file) => `${change.folder}/${change.resource}/${file.path}`)))
+}
+
+export type BranchInfo = { name: string; commit: string; message: string; author: string; ageSeconds: number; changes: ResourceChange[] }
+
+export const BRANCHES: BranchInfo[] = [
+  { name: "main", commit: "e18b07f", message: "Add spectate camera smoothing", author: "admin", ageSeconds: 36200, changes: [] },
+  {
+    name: "staging",
+    commit: "4be07d1",
+    message: "Try the new matchmaking queue",
+    author: "lia.mod",
+    ageSeconds: 7200,
+    changes: [
+      {
+        resource: "matchmaking",
+        folder: "[arena]",
+        kind: "changed",
+        files: [
+          { path: "server/queue.lua", added: 96, removed: 54 },
+          { path: "config.lua", added: 5, removed: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    name: "season-5",
+    commit: "d93a6f2",
+    message: "Season 5 maps and loadouts",
+    author: "admin",
+    ageSeconds: 190000,
+    changes: [
+      { resource: "loadouts", folder: "[arena]", kind: "changed", files: [{ path: "presets.lua", added: 48, removed: 12 }] },
+      { resource: "maps_docks", folder: "[assets]", kind: "added", files: [{ path: "fxmanifest.lua", added: 8, removed: 0 }] },
+    ],
+  },
+]

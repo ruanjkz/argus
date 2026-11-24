@@ -1,6 +1,8 @@
 import { Clock, Context, Effect, Layer, Option, PubSub, Stream } from "effect"
 
 import type { Incident, SupervisorEvent } from "../domain.ts"
+import type { Blame } from "../git/parse.ts"
+import { Repository } from "../git/repository.ts"
 import { Supervisor } from "../supervisor.ts"
 import { computeImpact, type Occurrence } from "./impact.ts"
 import type { CodeLocation, Diagnosis, Problem, ProblemKind, Runtime, SourceLocation } from "./model.ts"
@@ -21,6 +23,7 @@ interface Group {
   readonly source: SourceLocation | undefined
   readonly runtime: Runtime | undefined
   readonly diagnosis: Diagnosis | undefined
+  readonly introducedBy: Blame | undefined
   readonly firstSeen: number
   readonly occurrences: Array<Occurrence>
   message: string
@@ -37,6 +40,7 @@ interface Observation {
   readonly source?: SourceLocation | undefined
   readonly runtime?: Runtime | undefined
   readonly origin?: string | undefined
+  readonly introducedBy?: Blame | undefined
   readonly durationMs?: number
   readonly ongoing?: boolean
 }
@@ -61,12 +65,14 @@ const toProblem = (group: Group, now: number): Problem => ({
   ...(group.location === undefined ? {} : { location: group.location }),
   ...(group.source === undefined ? {} : { source: group.source }),
   ...(group.runtime === undefined ? {} : { runtime: group.runtime }),
-  ...(group.diagnosis === undefined ? {} : { diagnosis: group.diagnosis })
+  ...(group.diagnosis === undefined ? {} : { diagnosis: group.diagnosis }),
+  ...(group.introducedBy === undefined ? {} : { introducedBy: group.introducedBy })
 })
 
 const make = Effect.gen(function*() {
   const supervisor = yield* Supervisor
   const locator = yield* SourceLocator
+  const repository = yield* Repository
   const pubsub = yield* PubSub.unbounded<Problem>()
   const groups = new Map<string, Group>()
   let players = 0
@@ -87,6 +93,7 @@ const make = Effect.gen(function*() {
         source: observation.source,
         runtime: observation.runtime,
         diagnosis: diagnose({ kind, resource, location, message, source: observation.source, origin: observation.origin }),
+        introducedBy: observation.introducedBy,
         firstSeen: time,
         occurrences: [],
         message,
@@ -121,6 +128,10 @@ const make = Effect.gen(function*() {
   const recordScriptError = Effect.fnUntraced(function*(signal: ScriptErrorSignal, time: number) {
     const known = groups.has(groupId("script-error", signal.resource, signal.location, signal.message))
     const source = known || !signal.location ? Option.none<SourceLocation>() : yield* locator.resolve(signal.location)
+    const blamed = Option.getOrUndefined(source) ?? signal.location
+    const introducedBy = known || !signal.location || !blamed
+      ? Option.none<Blame>()
+      : yield* repository.blame(signal.location.resource, blamed.file, blamed.line)
     const { group } = observe({
       kind: "script-error",
       resource: signal.resource,
@@ -129,7 +140,8 @@ const make = Effect.gen(function*() {
       time,
       source: Option.getOrUndefined(source),
       runtime: signal.runtime,
-      origin: signal.origin
+      origin: signal.origin,
+      introducedBy: Option.getOrUndefined(introducedBy)
     })
     yield* publish(group, time)
   })

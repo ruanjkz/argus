@@ -13,10 +13,12 @@ import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
 
 import { DeployDetail } from "./deploy-detail"
+import { BranchPicker } from "./branch-picker"
 import { DEPLOY_STATUS } from "./deploy-status"
+import { DriftPanel } from "./drift-panel"
 
 export function DeploysPage() {
-  const { deploys, byId, building, check } = useDeploys()
+  const { deploys, byId, building, branch, check } = useDeploys()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export function DeploysPage() {
       setNote(null)
       return
     }
-    setNote(result === "busy" ? "A deploy is already building." : "Already up to date with origin/main.")
+    setNote(result === "busy" ? "A deploy is already building." : `Already up to date with origin/${branch}.`)
     if (noteTimer.current !== null) window.clearTimeout(noteTimer.current)
     noteTimer.current = window.setTimeout(() => setNote(null), 2600)
   }
@@ -73,7 +75,7 @@ export function DeploysPage() {
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Deploys</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-            {`${REPOSITORY.url}  ${REPOSITORY.branch}  live ${liveDeploy?.commit ?? "none"}`}
+            {`${REPOSITORY.url}  ${branch}  live ${liveDeploy?.commit ?? "none"}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -82,6 +84,7 @@ export function DeploysPage() {
               {note}
             </span>
           ) : null}
+          <BranchPicker />
           <button
             type="button"
             onClick={runCheck}
@@ -108,10 +111,11 @@ export function DeploysPage() {
               </p>
             ) : (
               <p>
-                Argus pulls {REPOSITORY.branch}, test boots it on port {REPOSITORY.stagingPort}, and only swaps the resources folder at a restart.
+                Argus pulls {branch}, test boots it on port {REPOSITORY.stagingPort}, and only swaps the resources folder at a restart.
               </p>
             )}
           </div>
+          <DriftPanel />
           <div className="min-h-0 flex-1 overflow-y-auto">
             <ul ref={listRef} onKeyDown={handleKeyDown} className="divide-y divide-border/50" aria-label="Deploys">
               {deploys.map((deploy, index) => (

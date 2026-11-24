@@ -6,6 +6,7 @@ import { Alert02Icon, AlertCircleIcon, PackageIcon, PlayIcon, RefreshIcon, StopI
 
 import { useConsole } from "@/components/console-store"
 import { ACTION_BUTTON, DetailRows, Section } from "@/components/detail-parts"
+import { IncidentOriginText } from "@/components/incident-origin"
 import { useLiveServer } from "@/components/live-server"
 import { TextSwap } from "@/components/motion-primitives"
 import { useResources, type ResourceView } from "@/components/resources-store"
@@ -148,6 +149,12 @@ export function ResourceDetail({
                       <p className="wrap-break-word text-foreground/90">{incident.message}</p>
                       <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{incident.location}</p>
                       <p className="mt-1 text-muted-foreground">{incident.explanation.fix}</p>
+                      {incident.introducedBy ? (
+                        <p className={cn("mt-1", incident.introducedBy.uncommitted ? "text-warning" : "text-muted-foreground")}>
+                          {incident.introducedBy.uncommitted ? null : "Since "}
+                          <IncidentOriginText origin={incident.introducedBy} />
+                        </p>
+                      ) : null}
                     </div>
                     <span className="shrink-0 text-right font-mono text-[11px] whitespace-nowrap text-muted-foreground tabular-nums">
                       <span className="block text-foreground/80">{incident.count}×</span>

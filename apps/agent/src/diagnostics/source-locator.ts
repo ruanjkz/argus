@@ -93,11 +93,12 @@ const make = Effect.gen(function*() {
       })
     }).pipe(Effect.orElseSucceed(() => Option.none<SourceLocation>()))
 
-  return SourceLocator.of({ resolve })
+  return SourceLocator.of({ resolve, folder: findResource })
 })
 
 export class SourceLocator extends Context.Service<SourceLocator, {
   resolve(location: CodeLocation): Effect.Effect<Option.Option<SourceLocation>>
+  folder(resource: string): Effect.Effect<Option.Option<string>>
 }>()("argus/agent/SourceLocator") {
   static readonly layer = Layer.effect(SourceLocator, make)
 }

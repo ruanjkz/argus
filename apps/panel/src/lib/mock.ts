@@ -54,6 +54,8 @@ export type IncidentExplanation = {
   fix: string
 }
 
+export type IncidentOrigin = { commit: string; author: string; summary: string; uncommitted: boolean }
+
 export type Incident = {
   id: string
   kind: IncidentKind
@@ -64,6 +66,7 @@ export type Incident = {
   lastSeen: number
   firstSeen: string
   explanation: IncidentExplanation
+  introducedBy?: IncidentOrigin
 }
 
 export const INCIDENTS: Incident[] = [
@@ -76,6 +79,7 @@ export const INCIDENTS: Incident[] = [
     count: 4,
     lastSeen: 38,
     firstSeen: "12:58",
+    introducedBy: { commit: "b41d7c0", author: "admin", summary: "Add armor to the shop", uncommitted: false },
     explanation: {
       title: "Script error in shop",
       what: "Line 88 of shop/server.lua reads price from an item that is not in the shop config, so the purchase handler stops halfway.",
@@ -92,6 +96,7 @@ export const INCIDENTS: Incident[] = [
     count: 1,
     lastSeen: 1260,
     firstSeen: "13:21",
+    introducedBy: { commit: "", author: "", summary: "", uncommitted: true },
     explanation: {
       title: "Server thread hung",
       what: "The main server thread was blocked for 4.1 seconds inside inventory/server/tick.lua:212. Nothing else ran during that time.",

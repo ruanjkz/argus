@@ -8,6 +8,7 @@ import { ServerConfig } from "./config.ts"
 import type { Problem } from "./diagnostics/model.ts"
 import { Diagnostics } from "./diagnostics/service.ts"
 import { SourceLocator } from "./diagnostics/source-locator.ts"
+import { Repository } from "./git/repository.ts"
 import type { SupervisorEvent } from "./domain.ts"
 import { Supervisor } from "./supervisor.ts"
 
@@ -75,6 +76,14 @@ const describeProblem = (problem: Problem) => {
     `${DIM}[argus]${RESET} ${problem.impact.severity.toUpperCase()}  ${where}  ${problem.message}`,
     `${DIM}        impact  ${problem.impact.summary}${RESET}`
   ]
+  if (problem.introducedBy) {
+    const blame = problem.introducedBy
+    lines.push(
+      blame.uncommitted
+        ? `${DIM}        since   this line was edited on the server and is not committed${RESET}`
+        : `${DIM}        since   ${blame.commit} by ${blame.author}: ${blame.summary}${RESET}`
+    )
+  }
   if (problem.diagnosis) {
     lines.push(`${DIM}        cause   ${problem.diagnosis.cause} (${problem.diagnosis.confidence})${RESET}`)
     for (const step of problem.diagnosis.steps) lines.push(`${DIM}        fix     ${step}${RESET}`)
@@ -90,6 +99,7 @@ const inputLines = Stream.fromAsyncIterable(
 const program = Effect.gen(function*() {
   const supervisor = yield* Supervisor
   const diagnostics = yield* Diagnostics
+  const repository = yield* Repository
   yield* supervisor.events.pipe(Stream.runForEach(render), Effect.forkScoped)
   const announced = new Set<string>()
   yield* diagnostics.changes.pipe(
@@ -115,6 +125,16 @@ const program = Effect.gen(function*() {
         return supervisor.restart
       case ":status":
         return supervisor.status.pipe(Effect.flatMap((status) => Console.log(`${DIM}[argus] status ${status}${RESET}`)))
+      case ":drift":
+        return repository.drift.pipe(
+          Effect.flatMap((entries) =>
+            Console.log(
+              entries.length === 0
+                ? `${DIM}[argus] resources match the last commit${RESET}`
+                : entries.map((entry) => `${DIM}[argus] ${entry.state.padEnd(9)} ${entry.path}${RESET}`).join("\n")
+            )
+          )
+        )
       case ":problems":
         return diagnostics.problems.pipe(
           Effect.flatMap((problems) =>
@@ -140,6 +160,7 @@ const program = Effect.gen(function*() {
 
 const MainLayer = Diagnostics.layer.pipe(
   Layer.provideMerge(Supervisor.layer),
+  Layer.provideMerge(Repository.layer),
   Layer.provide(SourceLocator.layer),
   Layer.provide(ConfigLayer),
   Layer.provide(NodeServices.layer)

@@ -7,6 +7,7 @@ import { Activity01Icon, Alert02Icon, Clock01Icon } from "@hugeicons/core-free-i
 import { useLiveServer } from "@/components/live-server"
 import { AnimatedNumber } from "@/components/motion-primitives"
 import { formatAgo, type Incident, type IncidentKind } from "@/lib/mock"
+import { IncidentOriginText } from "@/components/incident-origin"
 import { cn } from "@/lib/utils"
 
 import { Panel } from "./panel"
@@ -87,6 +88,14 @@ function IncidentExplanation({ incident }: { incident: Incident }) {
         <dd className="text-foreground/90">{impact}</dd>
         <dt className="text-muted-foreground">Fix</dt>
         <dd className="text-foreground/90">{fix}</dd>
+        {incident.introducedBy ? (
+          <>
+            <dt className="text-muted-foreground">Since</dt>
+            <dd className="text-foreground/90">
+              <IncidentOriginText origin={incident.introducedBy} />
+            </dd>
+          </>
+        ) : null}
       </dl>
       <p className="mt-3 border-t border-border/70 pt-2 font-mono text-[11px] whitespace-pre text-muted-foreground">
         {`${incident.count}×  first seen ${incident.firstSeen}  last ${formatAgo(incident.lastSeen)}`}

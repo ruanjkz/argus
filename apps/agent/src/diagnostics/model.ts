@@ -1,5 +1,7 @@
 import { Schema } from "effect"
 
+import { Blame } from "../git/parse.ts"
+
 export const ProblemKind = Schema.Literals([
   "script-error",
   "resource-error",
@@ -64,6 +66,7 @@ export const Problem = Schema.Struct({
   firstSeen: Schema.Number,
   lastSeen: Schema.Number,
   impact: Impact,
-  diagnosis: Schema.optionalKey(Diagnosis)
+  diagnosis: Schema.optionalKey(Diagnosis),
+  introducedBy: Schema.optionalKey(Blame)
 })
 export type Problem = typeof Problem.Type

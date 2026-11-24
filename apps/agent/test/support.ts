@@ -6,6 +6,7 @@ import { Duration, Layer } from "effect"
 import { ServerConfig, type ServerSettings } from "../src/config.ts"
 import { Diagnostics } from "../src/diagnostics/service.ts"
 import { SourceLocator } from "../src/diagnostics/source-locator.ts"
+import { Repository } from "../src/git/repository.ts"
 import { Supervisor } from "../src/supervisor.ts"
 
 const fakeServer = fileURLToPath(new URL("../fixtures/fake-fxserver.mjs", import.meta.url))
@@ -35,6 +36,7 @@ export const supervisorLayer = (scenario: string, overrides: Partial<ServerSetti
 export const diagnosticsLayer = (scenario: string, overrides: Partial<ServerSettings> = {}) =>
   Diagnostics.layer.pipe(
     Layer.provideMerge(Supervisor.layer),
+    Layer.provideMerge(Repository.layer),
     Layer.provide(SourceLocator.layer),
     Layer.provide(configLayer(scenario, overrides)),
     Layer.provide(NodeServices.layer)
@@ -42,3 +44,10 @@ export const diagnosticsLayer = (scenario: string, overrides: Partial<ServerSett
 
 export const sourceLocatorLayer = (overrides: Partial<ServerSettings> = {}) =>
   SourceLocator.layer.pipe(Layer.provide(configLayer("normal", overrides)), Layer.provide(NodeServices.layer))
+
+export const repositoryLayer = (overrides: Partial<ServerSettings> = {}) =>
+  Repository.layer.pipe(
+    Layer.provide(SourceLocator.layer),
+    Layer.provide(configLayer("normal", overrides)),
+    Layer.provide(NodeServices.layer)
+  )
