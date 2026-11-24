@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { Panel } from "./panel"
 
 export function Health() {
-  const { status, heartbeatAgo, healthCheckMs, lanes } = useLiveServer()
+  const { status, heartbeatAgo, healthCheckMs, lanes, measured } = useLiveServer()
   const online = status === "online"
   const heartbeatText = online ? (heartbeatAgo === 0 ? "now" : `${heartbeatAgo}s ago`) : status === "offline" ? "offline" : "waiting"
 
@@ -18,6 +18,15 @@ export function Health() {
       meta="heartbeat every 3s over fd3 and http"
       action={<StatusBadge status={status} onlineLabel="Healthy" className="h-6 text-[11px]" />}
     >
+      {!measured ? (
+        <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-y-2 text-xs">
+          <dt className="text-muted-foreground">Heartbeat</dt>
+          <dd className="font-mono">{online ? "arriving from the argus resource" : status === "offline" ? "server is offline" : "waiting for the server"}</dd>
+          <dt className="text-muted-foreground">Watchdog</dt>
+          <dd>Restarts the server when the heartbeat stops.</dd>
+        </dl>
+      ) : (
+        <>
       <div className="flex flex-col gap-2">
         {(["fd3", "http"] as const).map((lane) => (
           <div key={lane} className="flex items-center gap-3">
@@ -40,6 +49,8 @@ export function Health() {
         <dt className="text-muted-foreground">Last hang</dt>
         <dd className="font-mono">inventory  4.1s  21m ago</dd>
       </dl>
+        </>
+      )}
     </Panel>
   )
 }

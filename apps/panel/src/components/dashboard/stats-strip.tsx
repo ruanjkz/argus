@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 const TICK_BUDGET = 50
 
 export function StatsStrip() {
-  const { players, maxPlayers, peakPlayers, tickAvg, ticks, memoryMb, uptime, status } = useLiveServer()
+  const { players, maxPlayers, peakPlayers, tickAvg, ticks, memoryMb, uptime, status, measured, live } = useLiveServer()
   const peakTick = Math.max(...ticks)
   const { restartTimes } = useSettings().settings
   const nextRestart = nextRestartTime(restartTimes, CONSOLE_END_SECONDS)
@@ -27,31 +27,39 @@ export function StatsStrip() {
         value={
           <>
             <AnimatedNumber value={players} />
-            <span className="text-muted-foreground"> / {maxPlayers}</span>
+            {maxPlayers ? <span className="text-muted-foreground"> / {maxPlayers}</span> : null}
           </>
         }
-        detail={`peak ${peakPlayers} today`}
+        detail={live ? "from the argus heartbeat" : `peak ${peakPlayers} today`}
       />
       <Stat
         label="Tick avg"
         value={
+          !measured ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
           <>
             <AnimatedNumber value={tickAvg} format={(value) => value.toFixed(1)} />
             <span className="text-base text-muted-foreground"> ms</span>
           </>
+          )
         }
-        detail={`peak ${peakTick.toFixed(0)} ms  budget ${TICK_BUDGET} ms`}
-        detailTone={peakTick > TICK_BUDGET ? "warning" : undefined}
+        detail={measured ? `peak ${peakTick.toFixed(0)} ms  budget ${TICK_BUDGET} ms` : "not measured yet"}
+        detailTone={measured && peakTick > TICK_BUDGET ? "warning" : undefined}
       />
       <Stat
         label="Memory"
         value={
-          <>
-            <AnimatedNumber value={memoryMb / 1024} format={(value) => value.toFixed(2)} />
-            <span className="text-base text-muted-foreground"> GB</span>
-          </>
+          measured ? (
+            <>
+              <AnimatedNumber value={memoryMb / 1024} format={(value) => value.toFixed(2)} />
+              <span className="text-base text-muted-foreground"> GB</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )
         }
-        detail="FXServer process"
+        detail={measured ? "FXServer process" : "not measured yet"}
       />
       <Stat
         label="Uptime"

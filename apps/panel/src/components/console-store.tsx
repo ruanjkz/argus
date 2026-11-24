@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
+import { useAgent, type AgentLine } from "@/components/agent-store"
 import { useLiveServer } from "@/components/live-server"
 import { RESOURCE_START_MS, RESOURCE_STOP_MS, useResources, type ResourceView } from "@/components/resources-store"
 import { useSettings } from "@/components/settings-store"
@@ -34,6 +35,21 @@ type ConsoleStore = {
 }
 
 const MAX_LINES = 2000
+const LOCAL_ID_START = 1_000_000_000
+const ERROR_PATTERN = /SCRIPT ERROR|\] > \S+ \(@|Couldn't start resource|Could not find dependency/
+const WARN_PATTERN = /hitch warning|\bwarning\b/i
+const CHANNEL_PATTERN = /^(?:\x1b\[[0-9;]*m)*\[\s*([^\]]+?)\]/
+const KIND_OF_SOURCE: Record<AgentLine["source"], ConsoleLine["kind"]> = { stdout: "stdout", stderr: "stderr", command: "command", system: "system" }
+
+function toConsoleLine(line: AgentLine): ConsoleLine {
+  const date = new Date(line.time)
+  const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":")
+  const channel = CHANNEL_PATTERN.exec(line.text)?.[1]
+  const source = line.source === "system" ? "argus" : line.source === "command" ? "console" : (channel?.replace(/^script:/, "") ?? "server")
+  const tag = line.source === "system" ? "argus" : line.source === "command" ? "you" : line.source === "stderr" ? "stderr" : undefined
+  const kind = line.source === "stdout" && ERROR_PATTERN.test(line.text) ? "stderr" : line.source === "stdout" && WARN_PATTERN.test(line.text) ? "warn" : KIND_OF_SOURCE[line.source]
+  return { id: line.id, time, kind, source, text: line.text, ...(tag ? { tag } : kind === "stderr" ? { tag: "stderr" } : {}) }
+}
 const SLOW_TICK = 38
 
 const STREAM_START_SECONDS = (() => {
@@ -54,6 +70,10 @@ const ConsoleContext = createContext<ConsoleStore | null>(null)
 
 export function ConsoleProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
+  const agent = useAgent()
+  const liveMode = agent.mode === "live"
+  const liveModeRef = useRef(liveMode)
+  const [clearedAfter, setClearedAfter] = useState(-1)
   const resources = useResources()
   const { settings } = useSettings()
   const [lines, setLines] = useState<ConsoleLine[]>(INITIAL_CONSOLE)
@@ -62,11 +82,14 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
   const pending = useRef(new Set<number>())
   const liveRef = useRef(live)
   const resourcesRef = useRef(resources)
+  const agentRef = useRef(agent)
   const settingsRef = useRef(settings)
 
   useEffect(() => {
     liveRef.current = live
     resourcesRef.current = resources
+    agentRef.current = agent
+    liveModeRef.current = liveMode
     settingsRef.current = settings
   })
 
@@ -79,7 +102,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     (drafts: ConsoleDraft[]) => {
       if (!drafts.length) return
       const time = clock()
-      const entries = drafts.map((draft) => ({ ...draft, id: nextId.current++, time }))
+      const base = liveModeRef.current ? LOCAL_ID_START : 0
+      const entries = drafts.map((draft) => ({ ...draft, id: base + nextId.current++, time }))
       setLines((previous) => {
         const merged = previous.concat(entries)
         return merged.length > MAX_LINES ? merged.slice(merged.length - MAX_LINES) : merged
@@ -110,7 +134,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     let timer = 0
     const schedule = () => {
       timer = window.setTimeout(() => {
-        if (document.visibilityState === "visible" && liveRef.current.status === "online") {
+        if (document.visibilityState === "visible" && liveRef.current.status === "online" && !liveModeRef.current) {
           const draft = chatterLine(random, round)
           if (draft.text.includes("won by")) round += 1
           append([draft])
@@ -124,13 +148,13 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
 
   const lastTick = live.ticks[live.ticks.length - 1]
   useEffect(() => {
-    if (lastTick > SLOW_TICK) append([slowTickLine(lastTick)])
+    if (lastTick > SLOW_TICK && !liveModeRef.current) append([slowTickLine(lastTick)])
   }, [lastTick, append])
 
   const shopCount = live.incidents.find((incident) => incident.id === "shop-88")?.count ?? 0
   const seenShopCount = useRef(shopCount)
   useEffect(() => {
-    if (shopCount <= seenShopCount.current) return
+    if (shopCount <= seenShopCount.current || liveModeRef.current) return
     seenShopCount.current = shopCount
     append(shopErrorLines(shopCount - 1))
   }, [shopCount, append])
@@ -139,7 +163,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const before = previousStatus.current
     previousStatus.current = live.status
-    if (before === live.status) return
+    if (before === live.status || liveModeRef.current) return
     const shutdown = (reason: string): ConsoleDraft[] => [
       { kind: "system", source: "argus", tag: "argus", text: `Sending shutdown notice, stopping FXServer pid ${SERVER.pid}` },
       { kind: "stdout", source: "citizen-server-impl", text: `${channel("citizen")} Server shutting down: ${reason}` },
@@ -166,6 +190,16 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       const [name, ...args] = value.split(/\s+/)
       const command = REGISTERED_COMMANDS.find((entry) => entry.name === name)
       const echo: ConsoleDraft = { kind: "command", source: "console", tag: "you", text: value }
+      if (liveModeRef.current) {
+        if (command && !canRun(command)) {
+          append([{ kind: "warn", source: "argus", tag: "argus", text: `Blocked ${name}: needs ${command.minRole}, you are ${CURRENT_ROLE}` }])
+          return
+        }
+        void agentRef.current.call("POST", "command", { command: value }).catch((error: unknown) =>
+          append([{ kind: "warn", source: "argus", tag: "argus", text: `Command not sent: ${error instanceof Error ? error.message : "agent unreachable"}` }]),
+        )
+        return
+      }
 
       if (!command) {
         append([echo, { kind: "stderr", source: "citizen-server-impl", tag: "stderr", text: `No such command ${name}.` }])
@@ -304,11 +338,22 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     [append, later],
   )
 
-  const clear = useCallback(() => setLines([]), [])
+  const clear = useCallback(() => {
+    setLines([])
+    setClearedAfter(agentRef.current.lines[agentRef.current.lines.length - 1]?.id ?? -1)
+  }, [])
 
   const announce = useCallback((text: string) => append([{ kind: "system", source: "argus", tag: "argus", text }]), [append])
 
-  const value = useMemo<ConsoleStore>(() => ({ lines, role: CURRENT_ROLE, run, clear, announce }), [lines, run, clear, announce])
+  const agentLines = agent.lines
+  const shown = useMemo(() => {
+    if (!liveMode) return lines
+    const fromAgent = agentLines.filter((line) => line.id > clearedAfter).map(toConsoleLine)
+    const local = lines.filter((line) => line.id >= LOCAL_ID_START)
+    return local.length ? [...fromAgent, ...local].sort((first, second) => first.time.localeCompare(second.time)) : fromAgent
+  }, [liveMode, lines, agentLines, clearedAfter])
+
+  const value = useMemo<ConsoleStore>(() => ({ lines: shown, role: CURRENT_ROLE, run, clear, announce }), [shown, run, clear, announce])
 
   return <ConsoleContext.Provider value={value}>{children}</ConsoleContext.Provider>
 }

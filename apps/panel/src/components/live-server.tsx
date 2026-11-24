@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
-import { ACTIONS, INCIDENTS, INITIAL_TICKS, SERVER, type Action, type Incident } from "@/lib/mock"
+import { useAgent, type AgentProblem } from "@/components/agent-store"
+import { ACTIONS, INCIDENTS, INITIAL_TICKS, SERVER, type Action, type Incident, type IncidentKind } from "@/lib/mock"
 
 export type ServerStatus = "online" | "restarting" | "stopping" | "offline" | "starting"
 
@@ -30,6 +31,10 @@ type LiveState = {
 
 type LiveServer = LiveState & {
   maxPlayers: number
+  pid: number | null
+  serverName: string
+  measured: boolean
+  live: boolean
   tickAvg: number
   start: () => void
   stop: () => void
@@ -70,7 +75,9 @@ function nextTick() {
 }
 
 export function LiveServerProvider({ children }: { children: ReactNode }) {
+  const agent = useAgent()
   const [state, setState] = useState<LiveState>(INITIAL_STATE)
+  const [now, setNow] = useState(0)
   const second = useRef(0)
   const actionId = useRef(0)
   const transition = useRef<number | null>(null)
@@ -84,6 +91,7 @@ export function LiveServerProvider({ children }: { children: ReactNode }) {
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible") return
       second.current += 1
+      setNow(Date.now())
       const now = second.current
       setState((previous) => {
         const online = previous.status === "online"
@@ -183,11 +191,38 @@ export function LiveServerProvider({ children }: { children: ReactNode }) {
     setState((previous) => ({ ...previous, actions: [{ id, actor: "you", text, secondsAgo: 0 }, ...previous.actions].slice(0, 6) }))
   }, [])
 
+  const agentServer = agent.mode === "live" ? agent.server : null
+  const agentProblems = agent.problems
+  const call = agent.call
+
   const value = useMemo<LiveServer>(() => {
     const recent = state.ticks.slice(-30)
     const tickAvg = Math.round((recent.reduce((total, tick) => total + tick, 0) / recent.length) * 10) / 10
-    return { ...state, maxPlayers: SERVER.maxPlayers, tickAvg, start, stop, restart, adjustPlayers, logAction }
-  }, [state, start, stop, restart, adjustPlayers, logAction])
+    const demo = { ...state, maxPlayers: SERVER.maxPlayers, pid: SERVER.pid as number | null, serverName: SERVER.name, measured: true, live: false, tickAvg, start, stop, restart, adjustPlayers, logAction }
+    if (!agentServer) return demo
+    const control = (action: "start" | "stop" | "restart", text: string) => () => {
+      logAction(text)
+      void call("POST", `server/${action}`).catch(() => undefined)
+    }
+    const clock = now || agentServer.onlineSince || 0
+    return {
+      ...demo,
+      measured: false,
+      live: true,
+      status: agentServer.status,
+      players: agentServer.players,
+      peakPlayers: Math.max(agentServer.players, 0),
+      maxPlayers: agentServer.maxPlayers ?? 0,
+      pid: agentServer.pid,
+      serverName: agentServer.name,
+      uptime: agentServer.onlineSince ? Math.max(0, Math.floor((clock - agentServer.onlineSince) / 1000)) : 0,
+      incidents: agentProblems.map((problem) => toIncident(problem, clock)),
+      start: control("start", "started the server"),
+      stop: control("stop", "stopped the server"),
+      restart: control("restart", "restarted the server"),
+      adjustPlayers: () => undefined,
+    }
+  }, [state, start, stop, restart, adjustPlayers, logAction, agentServer, agentProblems, call, now])
 
   return <LiveServerContext.Provider value={value}>{children}</LiveServerContext.Provider>
 }
@@ -196,4 +231,54 @@ export function useLiveServer() {
   const context = useContext(LiveServerContext)
   if (!context) throw new Error("useLiveServer must be used inside LiveServerProvider")
   return context
+}
+
+const KIND_OF: Record<string, IncidentKind> = {
+  "script-error": "error",
+  "resource-error": "error",
+  "thread-hang": "hang",
+  "heartbeat-lost": "hang",
+  crashed: "hang",
+  "boot-timeout": "hang",
+  "crash-loop": "hang",
+}
+
+const TITLE_OF: Record<string, string> = {
+  "script-error": "Script error",
+  "resource-error": "Resource failed",
+  "thread-hang": "Server thread hung",
+  "heartbeat-lost": "Server stopped answering",
+  crashed: "FXServer crashed",
+  "boot-timeout": "Server did not finish booting",
+  "crash-loop": "Restarts gave up",
+  hitch: "Server hitch",
+  "port-in-use": "Port already in use",
+  "spawn-failed": "FXServer could not start",
+}
+
+function clockOf(time: number) {
+  const date = new Date(time)
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+}
+
+function toIncident(problem: AgentProblem, now: number): Incident {
+  const place = problem.source ?? problem.location
+  const resource = problem.resource ?? problem.location?.resource ?? "server"
+  return {
+    id: problem.id,
+    kind: KIND_OF[problem.kind] ?? "warn",
+    resource,
+    location: place ? `${place.file}:${place.line}` : problem.kind,
+    message: problem.message,
+    count: problem.count,
+    lastSeen: Math.max(0, Math.floor((now - problem.lastSeen) / 1000)),
+    firstSeen: clockOf(problem.firstSeen),
+    explanation: {
+      title: `${TITLE_OF[problem.kind] ?? "Problem"} in ${resource}`,
+      what: problem.diagnosis?.cause ?? problem.message,
+      impact: problem.impact.summary,
+      fix: problem.diagnosis?.steps.join(" ") ?? "Look at the console around the time it happened.",
+    },
+    ...(problem.introducedBy ? { introducedBy: problem.introducedBy } : {}),
+  }
 }

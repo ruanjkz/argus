@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu01Icon } from "@hugeicons/core-free-icons"
 
+import { AgentProvider } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
 import { ConsoleProvider } from "@/components/console-store"
 import { DeploysProvider } from "@/components/deploys-store"
@@ -14,6 +15,7 @@ import { ServerName, SettingsProvider } from "@/components/settings-store"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
+import { AgentBanner } from "./agent-banner"
 import { AppSidebar, SidebarRail } from "./app-sidebar"
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -77,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             </span>
           </div>
+          <AgentBanner />
           <main className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/70 bg-background">{children}</main>
         </div>
       </div>
@@ -86,16 +89,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function ServerProviders({ children }: { children: ReactNode }) {
   return (
-    <SettingsProvider>
-      <LiveServerProvider>
-        <ResourcesProvider>
-          <ConsoleProvider>
-            <PlayersProvider>
-              <DeploysProvider>{children}</DeploysProvider>
-            </PlayersProvider>
-          </ConsoleProvider>
-        </ResourcesProvider>
-      </LiveServerProvider>
-    </SettingsProvider>
+    <AgentProvider>
+      <SettingsProvider>
+        <LiveServerProvider>
+          <ResourcesProvider>
+            <ConsoleProvider>
+              <PlayersProvider>
+                <DeploysProvider>{children}</DeploysProvider>
+              </PlayersProvider>
+            </ConsoleProvider>
+          </ResourcesProvider>
+        </LiveServerProvider>
+      </SettingsProvider>
+    </AgentProvider>
   )
 }

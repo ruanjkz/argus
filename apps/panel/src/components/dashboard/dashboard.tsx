@@ -41,7 +41,7 @@ export function Dashboard() {
 }
 
 function DashboardHeader() {
-  const { status } = useLiveServer()
+  const { status, live, pid, serverName } = useLiveServer()
   return (
     <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border/70 px-5 py-3">
       <div className="min-w-0">
@@ -50,7 +50,7 @@ function DashboardHeader() {
           <StatusBadge status={status} className="h-6 text-[11px]" />
         </div>
         <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-          {`${SERVER.name}  pid ${SERVER.pid}  artifact ${SERVER.artifact}  onesync ${SERVER.onesync}`}
+          {live ? `${serverName}  pid ${pid ?? "—"}` : `${SERVER.name}  pid ${SERVER.pid}  artifact ${SERVER.artifact}  onesync ${SERVER.onesync}`}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">

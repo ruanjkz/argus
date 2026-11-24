@@ -65,10 +65,14 @@ export function SettingsPage() {
       return
     }
     const needsStart = changed.some((key) => NEXT_START_KEYS.includes(key))
-    save()
+    const count = changed.length
     setShowErrors(false)
-    live.logAction(`updated ${changed.length === 1 ? "a setting" : `${changed.length} settings`}`)
-    setSavedNote(needsStart ? "Saved. Launch and startup changes apply the next time the server starts." : "Saved.")
+    save()
+      .then(() => {
+        live.logAction(`updated ${count === 1 ? "a setting" : `${count} settings`}`)
+        setSavedNote(needsStart ? "Saved. Launch and startup changes apply the next time the server starts." : "Saved.")
+      })
+      .catch(() => setSavedNote("Could not save. Is the Argus agent running?"))
   }
 
   function handleDiscard() {

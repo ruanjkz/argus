@@ -1,0 +1,19 @@
+{
+  "name": "argus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open source server manager for FiveM",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "argus": "apps/agent/bin/argus.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "npm install --prefix apps/agent && npm install --prefix apps/panel && npm run build --prefix apps/panel",
+    "argus": "node apps/agent/bin/argus.mjs",
+    "test": "npm test --prefix apps/agent"
+  }
+}

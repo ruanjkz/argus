@@ -20,7 +20,6 @@ import {
 import { Kbd } from "@/components/ui/kbd"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { stripAnsi, type ConsoleKind, type ConsoleLine } from "@/lib/console-data"
-import { SERVER } from "@/lib/mock"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { cn } from "@/lib/utils"
 
@@ -43,14 +42,14 @@ function downloadLog(lines: ConsoleLine[]) {
   const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }))
   const anchor = document.createElement("a")
   anchor.href = url
-  anchor.download = `${SERVER.name}-console.log`
+  anchor.download = `console-${new Date().toISOString().slice(0, 10)}.log`
   anchor.click()
   URL.revokeObjectURL(url)
 }
 
 export function ConsolePage() {
   const { lines, run, clear, role } = useConsole()
-  const { status } = useLiveServer()
+  const { status, serverName, pid } = useLiveServer()
   const [level, setLevel] = useState<LevelFilter>("all")
   const [hiddenSources, setHiddenSources] = useState<string[]>([])
   const [query, setQuery] = useState("")
@@ -130,7 +129,7 @@ export function ConsolePage() {
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Console</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-            {`${SERVER.name}  pid ${SERVER.pid}  ${lines.length.toLocaleString("en-US")} lines  showing ${filtered.length.toLocaleString("en-US")}`}
+            {`${serverName}  pid ${pid ?? "—"}  ${lines.length.toLocaleString("en-US")} lines  showing ${filtered.length.toLocaleString("en-US")}`}
           </p>
         </div>
         <StatusBadge status={status} />

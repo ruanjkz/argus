@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowUpRight01Icon, Copy01Icon, Loading03Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 
+import { useAgent } from "@/components/agent-store"
 import { useDeploys } from "@/components/deploys-store"
 import { IconSwap } from "@/components/motion-primitives"
 import { useSettings } from "@/components/settings-store"
@@ -26,6 +27,10 @@ const SECONDARY =
 
 export function ConnectWizard() {
   const { connect } = useDeploys()
+  const agent = useAgent()
+  const live = agent.mode === "live"
+  const [key, setKey] = useState<{ publicKey: string; fingerprint: string } | null>(null)
+  const [keyError, setKeyError] = useState<string | null>(null)
   const { name: serverName } = useSettings().settings
   const [step, setStep] = useState<Step>(1)
   const [url, setUrl] = useState("")
@@ -48,7 +53,16 @@ export function ConnectWizard() {
 
   function submitUrl(event: FormEvent) {
     event.preventDefault()
-    if (remote) setStep(2)
+    if (!remote) return
+    setStep(2)
+    if (!live || key) return
+    agent
+      .call<{ publicKey: string; fingerprint: string }>("POST", "git/key")
+      .then((created) => {
+        setKey(created)
+        setKeyError(null)
+      })
+      .catch((error: unknown) => setKeyError(error instanceof Error ? error.message : "Could not create the key"))
   }
 
   async function copyKey() {
@@ -56,7 +70,7 @@ export function ConnectWizard() {
     setCopied(true)
     later(1600, () => setCopied(false))
     try {
-      await navigator.clipboard.writeText(DEPLOY_PUBLIC_KEY)
+      await navigator.clipboard.writeText(key?.publicKey ?? DEPLOY_PUBLIC_KEY)
     } catch {
       return
     }
@@ -65,6 +79,21 @@ export function ConnectWizard() {
   function runTest() {
     setStep(3)
     setTest({ phase: "testing" })
+    if (live && remote) {
+      agent
+        .call<{ ok: true; branches: string[] } | { ok: false; reason: ConnectionFailure }>("POST", "git/test", { url: remote.sshUrl })
+        .then((result) => {
+          if (!result.ok) {
+            setTest({ phase: "failed", failure: result.reason in FAILURE_COPY ? result.reason : "unknown" })
+            return
+          }
+          const branches = result.branches.length ? result.branches : ["main"]
+          setBranch(branches.includes("main") ? "main" : branches.includes("master") ? "master" : branches[0])
+          setTest({ phase: "ok", branches })
+        })
+        .catch(() => setTest({ phase: "failed", failure: "unknown" }))
+      return
+    }
     later(TEST_MS, () => {
       if (!everCopied) {
         setTest({ phase: "failed", failure: "key-not-added" })
@@ -127,7 +156,29 @@ export function ConnectWizard() {
           </StepCard>
 
           <StepCard number={2} current={step} title={`Add this key on ${host}`} summary="Key added" onEdit={() => setStep(2)}>
-            {remote ? <KeyStep remote={remote} host={host} serverName={serverName} copied={copied} onCopy={copyKey} onDone={runTest} /> : null}
+            {remote ? (
+              keyError ? (
+                <div role="alert" className="rounded-xl bg-destructive/10 px-3 py-2.5 text-xs">
+                  <p className="font-medium text-destructive">Argus could not create the key</p>
+                  <p className="mt-1 text-foreground/90">{keyError}. Run argus doctor to see what is missing.</p>
+                </div>
+              ) : live && !key ? (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+                  <HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className="size-4 animate-spin motion-reduce:animate-none" />
+                  Creating a key on this machine
+                </p>
+              ) : (
+                <KeyStep
+                  remote={remote}
+                  host={host}
+                  serverName={serverName}
+                  publicKey={key?.publicKey ?? DEPLOY_PUBLIC_KEY}
+                  copied={copied}
+                  onCopy={copyKey}
+                  onDone={runTest}
+                />
+              )
+            ) : null}
           </StepCard>
 
           <StepCard number={3} current={step} title="Test the connection" summary="">
@@ -252,6 +303,7 @@ function KeyStep({
   remote,
   host,
   serverName,
+  publicKey,
   copied,
   onCopy,
   onDone,
@@ -259,6 +311,7 @@ function KeyStep({
   remote: Remote
   host: string
   serverName: string
+  publicKey: string
   copied: boolean
   onCopy: () => void
   onDone: () => void
@@ -270,7 +323,7 @@ function KeyStep({
         read only.
       </p>
       <div className="mt-3 rounded-xl bg-muted p-3">
-        <p className="font-mono text-[11px] leading-relaxed break-all text-foreground/90 select-all">{DEPLOY_PUBLIC_KEY}</p>
+        <p className="font-mono text-[11px] leading-relaxed break-all text-foreground/90 select-all">{publicKey}</p>
         <button type="button" onClick={onCopy} className={cn(PRIMARY, "mt-3")}>
           <IconSwap
             active={copied ? "b" : "a"}

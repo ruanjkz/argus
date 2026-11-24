@@ -2,9 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
+import { useAgent } from "@/components/agent-store"
 import { useConsole } from "@/components/console-store"
 import { useLiveServer, type ServerStatus } from "@/components/live-server"
-import type { Remote } from "@/lib/repository"
+import { parseRemote, type Remote } from "@/lib/repository"
 import {
   BRANCHES,
   changedPaths,
@@ -66,12 +67,30 @@ const DeploysContext = createContext<DeploysStore | null>(null)
 
 export function DeploysProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
+  const agent = useAgent()
   const consoleStore = useConsole()
   const [deploys, setDeploys] = useState<Deploy[]>(INITIAL_DEPLOYS)
   const [elapsed, setElapsed] = useState(0)
   const [applying, setApplying] = useState(false)
   const [branch, setBranch] = useState("main")
   const [connection, setConnection] = useState<Remote | null>(null)
+  const agentMode = agent.mode
+  const agentCall = agent.call
+
+  useEffect(() => {
+    if (agentMode !== "live") return
+    let cancelled = false
+    agentCall<{ connected: boolean; repository?: { url: string; branch: string } }>("GET", "git")
+      .then((state) => {
+        if (cancelled || !state.connected || !state.repository) return
+        setConnection(parseRemote(state.repository.url))
+        setBranch(state.repository.branch)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [agentMode, agentCall])
   const [drift, setDrift] = useState<DriftEntry[]>(INITIAL_DRIFT)
   const timers = useRef(new Set<number>())
   const incoming = useRef(0)
@@ -236,17 +255,19 @@ export function DeploysProvider({ children }: { children: ReactNode }) {
   )
 
   const connect = useCallback((remote: Remote, name: string) => {
+    if (agentMode === "live") void agentCall("PUT", "git", { url: remote.sshUrl, branch: name }).catch(() => undefined)
     setConnection(remote)
     setBranch(name)
     liveRef.current.logAction(`connected the repository ${remote.owner}/${remote.name}`)
     consoleRef.current.announce(`Connected to ${remote.owner}/${remote.name}. Tracking origin/${name}.`)
-  }, [])
+  }, [agentMode, agentCall])
 
   const disconnect = useCallback(() => {
+    if (agentMode === "live") void agentCall("PUT", "git", { url: null }).catch(() => undefined)
     setConnection(null)
     liveRef.current.logAction("disconnected the repository")
     consoleRef.current.announce("Repository disconnected. The resources folder stays as it is.")
-  }, [])
+  }, [agentMode, agentCall])
 
   const discardDrift = useCallback(() => {
     const count = driftRef.current.length

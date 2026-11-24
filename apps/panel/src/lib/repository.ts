@@ -1,6 +1,6 @@
 export type Remote = { host: string; owner: string; name: string; sshUrl: string; webUrl: string; deployKeysUrl?: string }
 
-export type ConnectionFailure = "key-not-added" | "repository-not-found" | "host-unreachable" | "timed-out" | "unknown"
+export type ConnectionFailure = "key-not-added" | "repository-not-found" | "host-unreachable" | "timed-out" | "ssh-missing" | "unknown"
 
 const SEGMENT = "[A-Za-z0-9._-]+"
 const SCP_PATTERN = new RegExp(`^(?:ssh://)?git@([A-Za-z0-9.-]+)[:/](${SEGMENT})/(${SEGMENT}?)(?:\\.git)?/?$`)
@@ -48,5 +48,6 @@ export const FAILURE_COPY: Record<ConnectionFailure, { title: string; fix: strin
     fix: "Check the internet connection and that outgoing SSH on port 22 is allowed by the firewall.",
   },
   "timed-out": { title: "The host took too long to answer", fix: "Try again in a moment. If it keeps happening, check the firewall." },
+  "ssh-missing": { title: "Git or SSH is missing on this machine", fix: "Install Git, which brings ssh-keygen with it, then run argus doctor." },
   unknown: { title: "The test failed", fix: "Try again. The console has the full git output." },
 }

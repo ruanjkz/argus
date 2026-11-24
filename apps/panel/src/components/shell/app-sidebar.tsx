@@ -18,6 +18,7 @@ import {
 } from "@hugeicons/core-free-icons"
 
 import { ArgusMark } from "@/components/argus-mark"
+import { useAgent } from "@/components/agent-store"
 import { useLiveServer } from "@/components/live-server"
 import { AnimatedNumber } from "@/components/motion-primitives"
 import {
@@ -76,6 +77,7 @@ export function AppSidebar({ onToggle, onNavigate }: { onToggle?: () => void; on
 }
 
 function ServerSwitcher() {
+  const agentMode = useAgent().mode
   const markId = `switcher-${useId().replace(/[^a-zA-Z0-9]/g, "")}`
   return (
     <DropdownMenu>
@@ -89,7 +91,7 @@ function ServerSwitcher() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm leading-5 font-medium text-foreground/90"><ServerName /></span>
-            <span className="block truncate font-mono text-[11px] leading-4 text-muted-foreground/80">{SERVER.license}</span>
+            <span className="block truncate font-mono text-[11px] leading-4 text-muted-foreground/80">{agentMode === "live" ? "local agent" : agentMode === "demo" ? "demo" : SERVER.license}</span>
           </span>
           <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.75} className="size-3.5 shrink-0 text-muted-foreground/60" />
         </button>

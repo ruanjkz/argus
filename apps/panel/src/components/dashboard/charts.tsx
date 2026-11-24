@@ -18,6 +18,14 @@ const TICK_CONFIG = {
 } satisfies ChartConfig
 
 export function PlayersChart() {
+  const { live, players } = useLiveServer()
+  if (live) {
+    return (
+      <Panel title="Players" meta={`${players} online now`}>
+        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">Argus starts drawing player history after the server has been online for an hour.</p>
+      </Panel>
+    )
+  }
   return (
     <Panel title="Players" meta="today vs yesterday, hourly">
       <EChartsLineChart data={PLAYERS_BY_HOUR} config={PLAYERS_CONFIG} xDataKey="hour" curveType="monotone" animation={false} className="h-52">
@@ -34,7 +42,7 @@ export function PlayersChart() {
 }
 
 export function TickChart() {
-  const { ticks, tickAvg } = useLiveServer()
+  const { ticks, tickAvg, measured } = useLiveServer()
   const data = useMemo(
     () =>
       ticks.map((tick, index) => {
@@ -44,6 +52,14 @@ export function TickChart() {
     [ticks],
   )
   const peak = Math.max(...ticks)
+
+  if (!measured) {
+    return (
+      <Panel title="Tick time" meta="not measured yet">
+        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">Tick time needs the profiler hook in the argus resource. It is not wired up yet.</p>
+      </Panel>
+    )
+  }
 
   return (
     <Panel
