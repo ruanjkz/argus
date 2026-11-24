@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Kbd } from "@/components/ui/kbd"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ServerName } from "@/components/settings-store"
 import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
 
@@ -87,7 +88,7 @@ function ServerSwitcher() {
             <ArgusMark id={markId} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm leading-5 font-medium text-foreground/90">{SERVER.name}</span>
+            <span className="block truncate text-sm leading-5 font-medium text-foreground/90"><ServerName /></span>
             <span className="block truncate font-mono text-[11px] leading-4 text-muted-foreground/80">{SERVER.license}</span>
           </span>
           <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.75} className="size-3.5 shrink-0 text-muted-foreground/60" />
@@ -97,7 +98,7 @@ function ServerSwitcher() {
         <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Servers</DropdownMenuLabel>
         <DropdownMenuItem>
           <span className="size-1.5 rounded-full bg-success" />
-          {SERVER.name}
+          <ServerName />
           <HugeiconsIcon icon={Tick02Icon} strokeWidth={1.75} className="ml-auto size-3.5" />
         </DropdownMenuItem>
         <DropdownMenuItem>

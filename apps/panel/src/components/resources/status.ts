@@ -8,6 +8,23 @@ export const RESOURCE_STATUS: Record<ResourceStatus, { label: string; dot: strin
   failed: { label: "Failed", dot: "bg-destructive", text: "text-destructive" },
 }
 
+export type FolderStats = { total: number; started: number; cpuMs: number; memoryKb: number }
+
+export function folderStatsOf(resources: ResourceView[]) {
+  const stats = new Map<string, FolderStats>()
+  for (const resource of resources) {
+    const entry = stats.get(resource.folder) ?? { total: 0, started: 0, cpuMs: 0, memoryKb: 0 }
+    entry.total += 1
+    if (resource.status === "started") {
+      entry.started += 1
+      entry.cpuMs += resource.liveCpuMs
+      entry.memoryKb += resource.memoryKb
+    }
+    stats.set(resource.folder, entry)
+  }
+  return stats
+}
+
 export function hasProblems(resource: ResourceView) {
   return resource.status === "failed" || resource.errors > 0 || resource.warnings > 0
 }

@@ -31,10 +31,10 @@ export const REGISTERED_COMMANDS: RegisteredCommand[] = [
   { name: "status", description: "List connected players", minRole: "moderator", resource: "citizen" },
   { name: "say", args: "<message>", description: "Broadcast a chat message", minRole: "moderator", resource: "chat" },
   { name: "clientkick", args: "<id> <reason>", description: "Kick a player", minRole: "moderator", resource: "citizen" },
-  { name: "ensure", args: "<resource>", description: "Start or restart a resource", minRole: "admin", resource: "citizen" },
-  { name: "start", args: "<resource>", description: "Start a resource", minRole: "admin", resource: "citizen" },
-  { name: "stop", args: "<resource>", description: "Stop a resource", minRole: "admin", resource: "citizen" },
-  { name: "restart", args: "<resource>", description: "Restart a resource", minRole: "admin", resource: "citizen" },
+  { name: "ensure", args: "<resource or [folder]>", description: "Start or restart a resource or a whole folder", minRole: "admin", resource: "citizen" },
+  { name: "start", args: "<resource or [folder]>", description: "Start a resource or a whole folder", minRole: "admin", resource: "citizen" },
+  { name: "stop", args: "<resource or [folder]>", description: "Stop a resource or a whole folder", minRole: "admin", resource: "citizen" },
+  { name: "restart", args: "<resource or [folder]>", description: "Restart a resource or a whole folder", minRole: "admin", resource: "citizen" },
   { name: "refresh", description: "Rescan resource folders", minRole: "admin", resource: "citizen" },
   { name: "profiler", args: "record <frames>", description: "Record a server profile", minRole: "admin", resource: "citizen" },
   { name: "set", args: "<convar> <value>", description: "Set a convar", minRole: "owner", resource: "citizen" },
@@ -66,17 +66,21 @@ export const CONSOLE_START_SECONDS = 10 * 3600 + 30 * 60
 
 export const CONSOLE_END_SECONDS = 13 * 3600 + 42 * 60 + 40
 
-export function bootLines(artifact: string, startedIn: string): ConsoleDraft[] {
-  const started = RESOURCES.filter((resource) => resource.state !== "stopped")
+export function bootLines(
+  artifact: string,
+  startedIn: string,
+  started: string[] = RESOURCES.filter((resource) => resource.state !== "stopped").map((resource) => resource.name),
+  configFile = "server.cfg",
+): ConsoleDraft[] {
   return [
-    { kind: "system", source: "argus", tag: "argus", text: `Starting FXServer with server.cfg  artifact ${artifact}` },
+    { kind: "system", source: "argus", tag: "argus", text: `Starting FXServer with ${configFile}  artifact ${artifact}` },
     { kind: "stdout", source: "citizen-server-impl", text: `${channel("citizen")} Server license key authentication succeeded. Welcome!` },
     { kind: "stdout", source: "resources", text: `${channel("resources")} Scanning resources.` },
     { kind: "stdout", source: "resources", text: `${channel("resources")} Found ${RESOURCES.length} resources.` },
-    ...started.map<ConsoleDraft>((resource) => ({
+    ...started.map<ConsoleDraft>((name) => ({
       kind: "stdout",
       source: "resources",
-      text: `${channel("resources")} Started resource ${resource.name}`,
+      text: `${channel("resources")} Started resource ${name}`,
     })),
     { kind: "stdout", source: "citizen-server-impl", text: `${channel("citizen")} Server is reachable on cfx.re` },
     { kind: "system", source: "argus", tag: "argus", text: `Server online in ${startedIn}` },

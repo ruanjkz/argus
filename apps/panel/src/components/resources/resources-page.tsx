@@ -8,6 +8,8 @@ import { useConsole } from "@/components/console-store"
 import { STATUS_META, useLiveServer } from "@/components/live-server"
 import { IconSwap } from "@/components/motion-primitives"
 import { useResources, type ResourceView } from "@/components/resources-store"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { handleRadioKeyDown } from "@/lib/radio-group"
@@ -15,10 +17,16 @@ import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
 
 import { ResourceDetail } from "./resource-detail"
-import { ResourcesTable, type ResourceSort } from "./resources-table"
-import { hasProblems } from "./status"
+import { ResourcesTable, type ResourceSort, type ResourceSortKey } from "./resources-table"
+import { folderStatsOf, hasProblems } from "./status"
 
 type Filter = "all" | "started" | "stopped" | "problems"
+
+const ORDERS: [ResourceSortKey, string][] = [
+  ["name", "Folders"],
+  ["cpu", "Top CPU"],
+  ["memory", "Top memory"],
+]
 
 const REFRESH_MS = 700
 
@@ -32,7 +40,10 @@ export function ResourcesPage() {
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [ensuring, setEnsuring] = useState<string | null>(null)
   const refreshTimer = useRef<number | null>(null)
+  const folderStats = useMemo(() => folderStatsOf(resources), [resources])
+  const ensuringStats = ensuring ? folderStats.get(ensuring) : undefined
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const desktop = useIsDesktop()
 
@@ -85,6 +96,16 @@ export function ResourcesPage() {
     if (!desktop) setSheetOpen(true)
   }
 
+  function ensureFolder(folder: string) {
+    consoleStore.run(`ensure ${folder}`)
+    live.logAction(`ran ensure ${folder}`)
+  }
+
+  function requestEnsure(folder: string) {
+    if (folderStats.get(folder)?.started) setEnsuring(folder)
+    else ensureFolder(folder)
+  }
+
   function refresh() {
     if (refreshing || !serverOnline) return
     consoleStore.run("refresh")
@@ -128,6 +149,25 @@ export function ResourcesPage() {
                 >
                   {label}
                   <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Order resources">
+              {ORDERS.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={sort.key === key}
+                  tabIndex={sort.key === key ? 0 : -1}
+                  onClick={() => setSort({ key, direction: key === "name" ? "asc" : "desc" })}
+                  onKeyDown={handleRadioKeyDown}
+                  className={cn(
+                    "press h-7 rounded-lg px-2.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    sort.key === key ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {label}
                 </button>
               ))}
             </div>
@@ -189,8 +229,11 @@ export function ResourcesPage() {
               <ResourcesTable
                 resources={visible}
                 grouped={grouped}
+                folderStats={folderStats}
                 selectedName={effectiveName}
+                serverOnline={serverOnline}
                 onSelect={select}
+                onEnsureFolder={requestEnsure}
                 sort={sort}
                 onSortChange={setSort}
               />
@@ -217,6 +260,35 @@ export function ResourcesPage() {
           </SheetContent>
         </Sheet>
       ) : null}
+
+      <Dialog open={ensuring !== null} onOpenChange={(open) => !open && setEnsuring(null)}>
+        <DialogContent showCloseButton={false} className="rounded-2xl p-5">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold wrap-anywhere">Ensure {ensuring}?</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {ensuringStats
+                ? `Restarts the ${ensuringStats.started} running ${ensuringStats.started === 1 ? "resource" : "resources"} in this folder ${ensuringStats.total - ensuringStats.started ? `and starts the ${ensuringStats.total - ensuringStats.started} stopped` : "in place"}. Scripts lose what they keep in memory.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                if (ensuring) ensureFolder(ensuring)
+                setEnsuring(null)
+              }}
+              className="h-8 rounded-lg px-3"
+            >
+              Ensure folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -9,8 +9,8 @@ import { ConsoleProvider } from "@/components/console-store"
 import { PlayersProvider } from "@/components/players-store"
 import { LiveServerProvider } from "@/components/live-server"
 import { ResourcesProvider } from "@/components/resources-store"
+import { ServerName, SettingsProvider } from "@/components/settings-store"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
 
 import { AppSidebar, SidebarRail } from "./app-sidebar"
@@ -71,7 +71,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Sheet>
             <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
               <ArgusMark id="mobile-bar" />
-              <span className="truncate">{SERVER.name}</span>
+              <span className="truncate">
+                <ServerName />
+              </span>
             </span>
           </div>
           <main className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/70 bg-background">{children}</main>
@@ -83,12 +85,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function ServerProviders({ children }: { children: ReactNode }) {
   return (
-    <LiveServerProvider>
-      <ResourcesProvider>
-        <ConsoleProvider>
-          <PlayersProvider>{children}</PlayersProvider>
-        </ConsoleProvider>
-      </ResourcesProvider>
-    </LiveServerProvider>
+    <SettingsProvider>
+      <LiveServerProvider>
+        <ResourcesProvider>
+          <ConsoleProvider>
+            <PlayersProvider>{children}</PlayersProvider>
+          </ConsoleProvider>
+        </ResourcesProvider>
+      </LiveServerProvider>
+    </SettingsProvider>
   )
 }

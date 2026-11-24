@@ -3,7 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
 import { useLiveServer } from "@/components/live-server"
+import { useSettings } from "@/components/settings-store"
 import { RESOURCE_CATALOG, type ResourceInfo } from "@/lib/resources"
+import { startupCoverage } from "@/lib/settings"
 
 export type ResourceStatus = "started" | "stopped" | "starting" | "stopping" | "failed"
 
@@ -37,8 +39,11 @@ const DEPENDENTS = new Map(
   ]),
 )
 
-function bootStates(): Record<string, ResourceStatus> {
-  return Object.fromEntries(RESOURCE_CATALOG.map((entry) => [entry.name, entry.initial]))
+function bootStates(startup: string[]): Record<string, ResourceStatus> {
+  const covered = startupCoverage(startup)
+  return Object.fromEntries(
+    RESOURCE_CATALOG.map((entry) => [entry.name, covered.has(entry.name) ? (entry.failure ? "failed" : "started") : "stopped"]),
+  )
 }
 
 function hash(value: string) {
@@ -51,8 +56,9 @@ const ResourcesContext = createContext<ResourcesStore | null>(null)
 
 export function ResourcesProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
+  const { startup } = useSettings().settings
   const serverOnline = live.status === "online"
-  const [states, setStates] = useState<Record<string, ResourceStatus>>(bootStates)
+  const [states, setStates] = useState<Record<string, ResourceStatus>>(() => bootStates(startup))
   const timers = useRef(new Map<string, number>())
   const statesRef = useRef(states)
   const onlineRef = useRef(serverOnline)
@@ -65,7 +71,7 @@ export function ResourcesProvider({ children }: { children: ReactNode }) {
   const [wasOnline, setWasOnline] = useState(serverOnline)
   if (wasOnline !== serverOnline) {
     setWasOnline(serverOnline)
-    if (serverOnline) setStates(bootStates())
+    if (serverOnline) setStates(bootStates(startup))
   }
 
   useEffect(() => {

@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
 import { useLiveServer } from "@/components/live-server"
-import { RESOURCE_START_MS, RESOURCE_STOP_MS, useResources } from "@/components/resources-store"
+import { RESOURCE_START_MS, RESOURCE_STOP_MS, useResources, type ResourceView } from "@/components/resources-store"
+import { useSettings } from "@/components/settings-store"
 import {
   bootLines,
   canRun,
@@ -21,6 +22,8 @@ import {
   type Role,
 } from "@/lib/console-data"
 import { createRandom, PLAYERS, RESOURCES, SERVER } from "@/lib/mock"
+import { RESOURCE_CATALOG } from "@/lib/resources"
+import { isFolderEntry, startupCoverage } from "@/lib/settings"
 
 type ConsoleStore = {
   lines: ConsoleLine[]
@@ -52,16 +55,19 @@ const ConsoleContext = createContext<ConsoleStore | null>(null)
 export function ConsoleProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
   const resources = useResources()
+  const { settings } = useSettings()
   const [lines, setLines] = useState<ConsoleLine[]>(INITIAL_CONSOLE)
   const nextId = useRef(INITIAL_CONSOLE.length)
   const startedAt = useRef<number | null>(null)
   const pending = useRef(new Set<number>())
   const liveRef = useRef(live)
   const resourcesRef = useRef(resources)
+  const settingsRef = useRef(settings)
 
   useEffect(() => {
     liveRef.current = live
     resourcesRef.current = resources
+    settingsRef.current = settings
   })
 
   const clock = useCallback(() => {
@@ -147,7 +153,9 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     } else if (live.status === "starting") {
       append([{ kind: "system", source: "argus", tag: "argus", text: "Start requested by you" }])
     } else if (live.status === "online") {
-      append(bootLines(SERVER.artifact, before === "starting" ? "3.2s" : "3.9s"))
+      const covered = startupCoverage(settingsRef.current.startup)
+      const started = RESOURCE_CATALOG.filter((entry) => covered.has(entry.name) && !entry.failure).map((entry) => entry.name)
+      append(bootLines(SERVER.artifact, before === "starting" ? "3.2s" : "3.9s", started, settingsRef.current.configFile))
     }
   }, [live.status, append])
 
@@ -175,6 +183,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       append([echo])
       const target = args[0]
       const resource = target === undefined ? undefined : resourcesRef.current.byName.get(target)
+      const folder = target !== undefined && isFolderEntry(target) ? target : undefined
+      const members = folder ? resourcesRef.current.resources.filter((entry) => entry.folder === folder) : []
       const missing: ConsoleDraft = {
         kind: "stderr",
         source: "citizen-server-impl",
@@ -189,6 +199,12 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
               { kind: "stderr", source: "resources", tag: "stderr", text: `Couldn't start resource ${name}.` },
             ]
           : [resourceLine(`Started resource ${name}`)]
+      const launch = (entry: ResourceView) => {
+        const running = entry.status === "started"
+        resourcesRef.current.restart(entry.name)
+        if (running) later(RESOURCE_STOP_MS - 80, [resourceLine(`Stopping resource ${entry.name}`)])
+        later((running ? RESOURCE_STOP_MS : 0) + RESOURCE_START_MS, startLines(entry.name, entry.failure))
+      }
 
       switch (command.name) {
         case "status": {
@@ -219,21 +235,46 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
         case "ensure":
         case "restart":
         case "start": {
+          if (folder && members.length) {
+            const idle = members.filter((entry) => entry.status !== "starting" && entry.status !== "stopping")
+            const targets = command.name === "start" ? idle.filter((entry) => entry.status !== "started") : idle
+            if (targets.length) targets.forEach(launch)
+            else later(100, [resourceLine(`Every resource in ${folder} is already started`)])
+            break
+          }
           if (!resource) {
             later(100, [missing])
             break
           }
-          const running = resource.status === "started"
-          if (command.name === "start" && running) {
+          if (command.name === "start" && resource.status === "started") {
             later(100, [resourceLine(`Resource ${resource.name} is already started`)])
             break
           }
-          resourcesRef.current.restart(resource.name)
-          if (running) later(RESOURCE_STOP_MS - 80, [resourceLine(`Stopping resource ${resource.name}`)])
-          later((running ? RESOURCE_STOP_MS : 0) + RESOURCE_START_MS, startLines(resource.name, resource.failure))
+          launch(resource)
           break
         }
         case "stop":
+          if (folder && members.length) {
+            const running = members.filter((entry) => entry.status === "started")
+            const kept = running.filter((entry) => entry.required)
+            const targets = running.filter((entry) => !entry.required)
+            if (kept.length) {
+              later(80, [
+                {
+                  kind: "warn",
+                  source: "argus",
+                  tag: "argus",
+                  text: `Kept ${kept.map((entry) => entry.name).join(", ")} running: Argus needs it to watch the server`,
+                },
+              ])
+            }
+            if (!running.length) later(100, [resourceLine(`No resource in ${folder} is running`)])
+            targets.forEach((entry) => {
+              resourcesRef.current.stop(entry.name)
+              later(RESOURCE_STOP_MS, [resourceLine(`Stopping resource ${entry.name}`)])
+            })
+            break
+          }
           if (!resource) {
             later(100, [missing])
             break

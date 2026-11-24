@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 
 import type { PlayerView } from "@/components/players-store"
 import { usePlayers } from "@/components/players-store"
+import { useSettings } from "@/components/settings-store"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { BAN_DURATIONS } from "@/lib/bans"
@@ -67,8 +68,9 @@ export function ActionDialog({
 
 function ActionForm({ action, player, onClose }: { action: PlayerAction; player: PlayerView; onClose: () => void }) {
   const store = usePlayers()
+  const { defaultBanDuration } = useSettings().settings
   const [reason, setReason] = useState("")
-  const [duration, setDuration] = useState("7 days")
+  const [duration, setDuration] = useState(defaultBanDuration)
   const unbannedLinks = player.linked.map((link) => store.byKey.get(link.key)).filter((entry): entry is PlayerView => Boolean(entry && !entry.banned))
   const [includeLinked, setIncludeLinked] = useState(unbannedLinks.length > 0)
   const { wrapRef, fieldRef, show: showError, clear: clearError } = useFieldError<HTMLTextAreaElement>()

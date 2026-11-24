@@ -3,6 +3,9 @@
 import type { ReactNode } from "react"
 
 import { STATUS_META, useLiveServer } from "@/components/live-server"
+import { useSettings } from "@/components/settings-store"
+import { CONSOLE_END_SECONDS } from "@/lib/console-data"
+import { nextRestartTime } from "@/lib/settings"
 import { AnimatedNumber, TextSwap } from "@/components/motion-primitives"
 import { formatDuration } from "@/lib/mock"
 import { cn } from "@/lib/utils"
@@ -12,8 +15,10 @@ const TICK_BUDGET = 50
 export function StatsStrip() {
   const { players, maxPlayers, peakPlayers, tickAvg, ticks, memoryMb, uptime, status } = useLiveServer()
   const peakTick = Math.max(...ticks)
+  const { restartTimes } = useSettings().settings
+  const nextRestart = nextRestartTime(restartTimes, CONSOLE_END_SECONDS)
   const online = status === "online"
-  const uptimeDetail = online ? "next restart 04:00" : status === "offline" ? "stopped by you" : "waiting for FXServer"
+  const uptimeDetail = online ? (nextRestart ? `next restart ${nextRestart}` : "no scheduled restart") : status === "offline" ? "stopped by you" : "waiting for FXServer"
 
   return (
     <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 lg:grid-cols-4">

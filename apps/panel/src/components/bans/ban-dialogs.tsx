@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react"
 
 import { usePlayers } from "@/components/players-store"
+import { useSettings } from "@/components/settings-store"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { BAN_DURATIONS, IDENTIFIER_PATTERN, type BanRecord } from "@/lib/bans"
@@ -121,9 +122,10 @@ export function NewBanDialog({ open, onClose }: { open: boolean; onClose: () => 
 
 function NewBanForm({ onClose }: { onClose: () => void }) {
   const { players, banIdentifier } = usePlayers()
+  const { defaultBanDuration } = useSettings().settings
   const [identifier, setIdentifier] = useState("")
   const [reason, setReason] = useState("")
-  const [duration, setDuration] = useState("7 days")
+  const [duration, setDuration] = useState(defaultBanDuration)
   const [identifierMessage, setIdentifierMessage] = useState("")
   const {
     wrapRef: identifierWrapRef,
