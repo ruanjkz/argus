@@ -1,35 +1,9 @@
-import { fileURLToPath } from "node:url"
-
-import { NodeServices } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Option, Stream } from "effect"
+import { Duration, Effect, Option, Stream } from "effect"
 
-import { ServerConfig, type ServerSettings } from "../src/config.ts"
 import type { IncidentKind, ServerStatus, SupervisorEvent } from "../src/domain.ts"
 import { Supervisor, type SupervisorShape } from "../src/supervisor.ts"
-
-const fakeServer = fileURLToPath(new URL("../fixtures/fake-fxserver.mjs", import.meta.url))
-
-const supervisorLayer = (scenario: string, overrides: Partial<ServerSettings> = {}) =>
-  Supervisor.layer.pipe(
-    Layer.provide(
-      ServerConfig.layer({
-        executable: process.execPath,
-        args: [fakeServer],
-        env: { FAKE_SCENARIO: scenario, FAKE_HEARTBEAT_MS: "100", FAKE_BOOT_MS: "150", FAKE_FAIL_AFTER_MS: "400" },
-        bootTimeout: Duration.seconds(5),
-        heartbeatTimeout: Duration.millis(700),
-        watchdogInterval: Duration.millis(100),
-        stopTimeout: Duration.seconds(2),
-        restartBaseDelay: Duration.millis(50),
-        restartMaxDelay: Duration.millis(200),
-        portRetryStep: Duration.millis(50),
-        portRetryMaxDelay: Duration.millis(200),
-        ...overrides
-      })
-    ),
-    Layer.provide(NodeServices.layer)
-  )
+import { supervisorLayer } from "./support.ts"
 
 const waitForStatus = (supervisor: SupervisorShape, status: ServerStatus) =>
   supervisor.statusChanges.pipe(
@@ -64,6 +38,8 @@ describe("Supervisor", () => {
       const supervisor = yield* Supervisor
       yield* supervisor.start
       yield* waitForStatus(supervisor, "online")
+      yield* waitForEvents(supervisor, (event) => event._tag === "PlayersChanged" && event.players === 48)
+      assert.strictEqual(yield* supervisor.players, 48)
 
       yield* supervisor.send("echo a;b")
       yield* waitForEvents(supervisor, isLine("a\u037eb"))

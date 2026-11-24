@@ -21,7 +21,7 @@ import { isQuitCommand, sanitizeCommand } from "./commands.ts"
 import { ServerConfig } from "./config.ts"
 import type { ConsoleLine, IncidentKind, LineSource, ServerStatus, SupervisorEvent } from "./domain.ts"
 import { BootTimeout, Crashed, HeartbeatLost, NotRunning, PortInUse, SpawnFailed, type SessionFailure } from "./errors.ts"
-import { isHeartbeatPayload, type Trace } from "./fd3.ts"
+import { decodeHeartbeat, type Trace } from "./fd3.ts"
 import { type FxProcess, spawnFxServer } from "./fx-process.ts"
 import { describeFailure, isRetryable, restartDelay } from "./policy.ts"
 
@@ -33,6 +33,7 @@ export interface SupervisorShape {
   readonly events: Stream.Stream<SupervisorEvent>
   readonly history: Effect.Effect<ReadonlyArray<ConsoleLine>>
   readonly pid: Effect.Effect<Option.Option<number>>
+  readonly players: Effect.Effect<number>
   readonly start: Effect.Effect<void>
   readonly stop: Effect.Effect<void>
   readonly restart: Effect.Effect<void>
@@ -46,6 +47,7 @@ const make = Effect.gen(function*() {
   const intent = yield* SubscriptionRef.make<Intent>("stop")
   const pubsub = yield* PubSub.unbounded<SupervisorEvent>({ replay: settings.historySize })
   const lineCounter = yield* Ref.make(0)
+  const playersRef = yield* Ref.make(0)
   const current = yield* Ref.make(Option.none<FxProcess>())
   const loopFiber = yield* Ref.make(Option.none<Fiber.Fiber<void>>())
   const lock = yield* Semaphore.make(1)
@@ -77,11 +79,20 @@ const make = Effect.gen(function*() {
     const previous = yield* SubscriptionRef.getAndSet(statusRef, status)
     if (previous === status) return
     const running = yield* Ref.get(current)
+    const time = yield* Clock.currentTimeMillis
     yield* publish(
       Option.isSome(running)
-        ? { _tag: "StatusChanged", status, pid: running.value.pid }
-        : { _tag: "StatusChanged", status }
+        ? { _tag: "StatusChanged", status, time, pid: running.value.pid }
+        : { _tag: "StatusChanged", status, time }
     )
+  })
+
+  const setPlayers = Effect.fnUntraced(function*(count: number) {
+    const players = Math.max(0, Math.round(count))
+    const previous = yield* Ref.getAndSet(playersRef, players)
+    if (previous === players) return
+    const time = yield* Clock.currentTimeMillis
+    yield* publish({ _tag: "PlayersChanged", players, time })
   })
 
   const shutdownRequested = SubscriptionRef.changes(intent).pipe(
@@ -99,6 +110,7 @@ const make = Effect.gen(function*() {
     yield* Effect.addFinalizer(() => Ref.set(current, Option.none()))
 
     if ((yield* SubscriptionRef.get(statusRef)) !== "restarting") yield* setStatus("starting")
+    yield* setPlayers(0)
     yield* emitLine("system", `FXServer started with pid ${process.pid}`)
 
     const startedAt = yield* Clock.currentTimeMillis
@@ -118,13 +130,16 @@ const make = Effect.gen(function*() {
           yield* emitLine("system", `Connected to Cfx.re at ${data.url}`)
           return
         case "script_structured_trace": {
-          if (data.resource !== settings.heartbeatResource || !isHeartbeatPayload(data.payload)) return
+          if (data.resource !== settings.heartbeatResource) return
+          const heartbeat = decodeHeartbeat(data.payload)
+          if (Option.isNone(heartbeat)) return
           const now = yield* Clock.currentTimeMillis
           const previous = yield* Ref.getAndSet(lastHeartbeat, Option.some(now))
           if (Option.isNone(previous) && (yield* SubscriptionRef.get(intent)) === "run") {
             yield* setStatus("online")
             yield* emitLine("system", "Server is online")
           }
+          if (heartbeat.value.players !== undefined) yield* setPlayers(heartbeat.value.players)
           return
         }
       }
@@ -282,6 +297,9 @@ const make = Effect.gen(function*() {
     events: Stream.fromPubSub(pubsub),
     history: Effect.sync(() => [...lines]),
     pid: Ref.get(current).pipe(Effect.map(Option.map((process) => process.pid))),
+    players: Effect.zipWith(SubscriptionRef.get(statusRef), Ref.get(playersRef), (status, players) =>
+      status === "online" ? players : 0
+    ),
     start,
     stop,
     restart,

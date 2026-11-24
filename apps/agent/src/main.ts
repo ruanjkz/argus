@@ -5,6 +5,8 @@ import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Config, Console, Duration, Effect, Layer, Option, Stream } from "effect"
 
 import { ServerConfig } from "./config.ts"
+import type { Problem } from "./diagnostics/model.ts"
+import { Diagnostics } from "./diagnostics/service.ts"
 import type { SupervisorEvent } from "./domain.ts"
 import { Supervisor } from "./supervisor.ts"
 
@@ -51,7 +53,24 @@ const render = (event: SupervisorEvent) => {
       return Console.log(`${DIM}[argus] status ${event.status}${event.pid === undefined ? "" : ` pid ${event.pid}`}${RESET}`)
     case "Incident":
       return Effect.void
+    case "PlayersChanged":
+      return Console.log(`${DIM}[argus] ${event.players} players online${RESET}`)
   }
+}
+
+const describeProblem = (problem: Problem) => {
+  const where = problem.location
+    ? `${problem.location.resource}/${problem.location.file}:${problem.location.line}`
+    : problem.resource ?? problem.kind
+  const lines = [
+    `${DIM}[argus]${RESET} ${problem.impact.severity.toUpperCase()}  ${where}  ${problem.message}`,
+    `${DIM}        impact  ${problem.impact.summary}${RESET}`
+  ]
+  if (problem.diagnosis) {
+    lines.push(`${DIM}        cause   ${problem.diagnosis.cause} (${problem.diagnosis.confidence})${RESET}`)
+    for (const step of problem.diagnosis.steps) lines.push(`${DIM}        fix     ${step}${RESET}`)
+  }
+  return lines.join("\n")
 }
 
 const inputLines = Stream.fromAsyncIterable(
@@ -61,7 +80,17 @@ const inputLines = Stream.fromAsyncIterable(
 
 const program = Effect.gen(function*() {
   const supervisor = yield* Supervisor
+  const diagnostics = yield* Diagnostics
   yield* supervisor.events.pipe(Stream.runForEach(render), Effect.forkScoped)
+  const announced = new Set<string>()
+  yield* diagnostics.changes.pipe(
+    Stream.filter((problem) => !announced.has(problem.id)),
+    Stream.runForEach((problem) => {
+      announced.add(problem.id)
+      return Console.log(`${DIM}[argus] new problem, type :problems for details: ${problem.message}${RESET}`)
+    }),
+    Effect.forkScoped
+  )
   yield* supervisor.start
 
   const handle = (line: string) => {
@@ -77,6 +106,14 @@ const program = Effect.gen(function*() {
         return supervisor.restart
       case ":status":
         return supervisor.status.pipe(Effect.flatMap((status) => Console.log(`${DIM}[argus] status ${status}${RESET}`)))
+      case ":problems":
+        return diagnostics.problems.pipe(
+          Effect.flatMap((problems) =>
+            Console.log(
+              problems.length === 0 ? `${DIM}[argus] no problems recorded${RESET}` : problems.map(describeProblem).join("\n")
+            )
+          )
+        )
       default:
         return supervisor.send(input).pipe(
           Effect.catchTag("NotRunning", (error) => Console.log(`${DIM}[argus] server is ${error.status}${RESET}`))
@@ -92,6 +129,10 @@ const program = Effect.gen(function*() {
   )
 })
 
-const MainLayer = Supervisor.layer.pipe(Layer.provide(ConfigLayer), Layer.provide(NodeServices.layer))
+const MainLayer = Diagnostics.layer.pipe(
+  Layer.provideMerge(Supervisor.layer),
+  Layer.provide(ConfigLayer),
+  Layer.provide(NodeServices.layer)
+)
 
 NodeRuntime.runMain(program.pipe(Effect.scoped, Effect.provide(MainLayer)))

@@ -33,8 +33,11 @@ export type Trace = typeof Trace.Type
 export const decodeTrace = Schema.decodeUnknownOption(Schema.fromJsonString(Trace))
 
 export const HeartbeatPayload = Schema.Struct({
-  type: Schema.Literal("heartbeat")
+  type: Schema.Literal("heartbeat"),
+  players: Schema.optionalKey(Schema.Number)
 })
+
+export const decodeHeartbeat = Schema.decodeUnknownOption(HeartbeatPayload)
 
 export const isHeartbeatPayload = Schema.is(HeartbeatPayload)
 

@@ -6,6 +6,7 @@ const heartbeatMs = Number(process.env.FAKE_HEARTBEAT_MS ?? 3000)
 const bootMs = Number(process.env.FAKE_BOOT_MS ?? 1200)
 const failAfterMs = Number(process.env.FAKE_FAIL_AFTER_MS ?? 1500)
 const resource = process.env.FAKE_RESOURCE ?? "argus"
+const players = Number(process.env.FAKE_PLAYERS ?? 48)
 
 const channel = (name) => `\u001b[97m[${name.padStart(19)}]\u001b[0m`
 const print = (name, text) => process.stdout.write(`${channel(name)} ${text}\n`)
@@ -22,9 +23,22 @@ try {
 
 const trace = (data) => traces?.write(JSON.stringify({ channel: "citizen-server-impl", data }))
 
+const scriptError = () => {
+  print("script:shop", "SCRIPT ERROR: @shop/server/main.lua:88: attempt to index a nil value (field 'price')")
+  print("script:shop", "> handler (@shop/server/main.lua:88)")
+}
+
+const hitch = (milliseconds) =>
+  print("citizen-server-impl", `server thread hitch warning: timer interval of ${milliseconds} milliseconds`)
+
+const hang = () => {
+  trace({ type: "watchdog_bark", thread: "svMain", stack: "@inventory/server/tick.lua:212\n@inventory/server/main.lua:48" })
+  setTimeout(() => hitch(4100), 150)
+}
+
 let heartbeat = null
 const startHeartbeat = () => {
-  const beat = () => trace({ type: "script_structured_trace", resource, payload: { type: "heartbeat" } })
+  const beat = () => trace({ type: "script_structured_trace", resource, payload: { type: "heartbeat", players } })
   beat()
   heartbeat = setInterval(beat, heartbeatMs)
 }
@@ -69,6 +83,15 @@ setTimeout(() => {
       trace({ type: "watchdog_bark", thread: "svMain", stack: "@shop/server/main.lua:88" })
     }, failAfterMs)
   }
+  if (scenario === "noisy") {
+    setTimeout(() => {
+      scriptError()
+      scriptError()
+      scriptError()
+      hitch(180)
+      hang()
+    }, failAfterMs)
+  }
 }, bootMs)
 
 const input = readline.createInterface({ input: process.stdin })
@@ -88,7 +111,19 @@ input.on("line", (line) => {
     return
   }
   if (command === "status") {
-    print("cmd", "3 players online")
+    print("cmd", `${players} players online`)
+    return
+  }
+  if (command === "fake-error") {
+    scriptError()
+    return
+  }
+  if (command.startsWith("fake-hitch")) {
+    hitch(Number(command.split(/\s+/)[1] ?? 180))
+    return
+  }
+  if (command === "fake-hang") {
+    hang()
     return
   }
   print("cmd", `No such command ${command}.`)

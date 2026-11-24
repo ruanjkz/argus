@@ -34,8 +34,14 @@ export const Incident = Schema.Struct({
 export type Incident = typeof Incident.Type
 
 export const SupervisorEvent = Schema.Union([
-  Schema.Struct({ _tag: Schema.tag("StatusChanged"), status: ServerStatus, pid: Schema.optionalKey(Schema.Int) }),
+  Schema.Struct({
+    _tag: Schema.tag("StatusChanged"),
+    status: ServerStatus,
+    time: Schema.Number,
+    pid: Schema.optionalKey(Schema.Int)
+  }),
   Schema.Struct({ _tag: Schema.tag("Line"), line: ConsoleLine }),
-  Schema.Struct({ _tag: Schema.tag("Incident"), incident: Incident })
+  Schema.Struct({ _tag: Schema.tag("Incident"), incident: Incident }),
+  Schema.Struct({ _tag: Schema.tag("PlayersChanged"), players: Schema.Int, time: Schema.Number })
 ])
 export type SupervisorEvent = typeof SupervisorEvent.Type
