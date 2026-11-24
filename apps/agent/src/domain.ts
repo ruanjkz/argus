@@ -42,6 +42,7 @@ export const SupervisorEvent = Schema.Union([
   }),
   Schema.Struct({ _tag: Schema.tag("Line"), line: ConsoleLine }),
   Schema.Struct({ _tag: Schema.tag("Incident"), incident: Incident }),
-  Schema.Struct({ _tag: Schema.tag("PlayersChanged"), players: Schema.Int, time: Schema.Number })
+  Schema.Struct({ _tag: Schema.tag("PlayersChanged"), players: Schema.Int, time: Schema.Number }),
+  Schema.Struct({ _tag: Schema.tag("Telemetry"), kind: Schema.String, data: Schema.Unknown, time: Schema.Number })
 ])
 export type SupervisorEvent = typeof SupervisorEvent.Type

@@ -12,6 +12,9 @@ import { Repository } from "../git/repository.ts"
 import { atLeast, type Role } from "../accounts.ts"
 import { readArgusFile, writeArgusFile, type ArgusFile, type PanelSettings } from "../home.ts"
 import { Supervisor } from "../supervisor.ts"
+import { DeployError, deployKeyPath, GitDeploy } from "../git/deploy.ts"
+import { Moderation, ModerationError, type OnlinePlayer } from "../moderation.ts"
+import { scanResources } from "../resources.ts"
 import { HttpError, readBody, send, type Handler, type RequestContext } from "./host.ts"
 
 const HISTORY_LINES = 1000
@@ -120,6 +123,7 @@ export const makeApiHandler = (options: ApiOptions) =>
           case "PlayersChanged":
             return write("players", { players: event.players })
           case "Incident":
+          case "Telemetry":
             return Effect.void
         }
       }
@@ -146,6 +150,70 @@ export const makeApiHandler = (options: ApiOptions) =>
         drift,
         branches
       }
+    }
+
+    const resourcesFolder = () => {
+      const file = readArgusFile(options.home)
+      return file ? join(file.settings.dataFolder, "resources") : undefined
+    }
+    const sendCommand = (text: string) =>
+      run(Effect.result(supervisor.send(text))).then((result) => {
+        if (result._tag === "Failure") throw new HttpError(409, `Server is ${result.failure.status}`)
+      })
+    const moderation = new Moderation(
+      options.home,
+      () => {
+        const folder = resourcesFolder()
+        return folder ? join(folder, "[argus]", "argus", "bans.json") : undefined
+      },
+      () => readArgusFile(options.home)?.settings.banMessage ?? "You are banned from this server.",
+      sendCommand
+    )
+    const deploy = new GitDeploy(resourcesFolder, () => deployKeyPath(options.home), () => readArgusFile(options.home)?.repository?.url)
+    const resourceStates = new Map<string, string>()
+
+    yield* supervisor.events.pipe(
+      Stream.runForEach((event) =>
+        Effect.promise(async () => {
+          if (event._tag === "StatusChanged") {
+            if (event.status === "online") await moderation.publish().catch(() => undefined)
+            if (event.status === "offline" || event.status === "restarting") {
+              moderation.onOffline()
+              resourceStates.clear()
+            }
+            return
+          }
+          if (event._tag !== "Telemetry") return
+          const data = event.data as { list?: unknown }
+          if (event.kind === "players" && Array.isArray(data.list)) moderation.onPlayers(data.list as Array<OnlinePlayer>, event.time)
+          if (event.kind === "resources" && Array.isArray(data.list)) {
+            resourceStates.clear()
+            for (const entry of data.list as Array<{ name?: unknown; state?: unknown }>) {
+              if (typeof entry.name === "string" && typeof entry.state === "string") resourceStates.set(entry.name, entry.state)
+            }
+          }
+        })
+      ),
+      Effect.forkScoped
+    )
+
+    const actor = (context: RequestContext) => context.account?.username ?? "argus"
+    const guard = async (work: () => Promise<unknown>) => {
+      try {
+        return await work()
+      } catch (error) {
+        if (error instanceof ModerationError || error instanceof DeployError) throw new HttpError(error.status, error.message)
+        throw error
+      }
+    }
+
+    const deployState = async () => {
+      const file = readArgusFile(options.home)
+      const isRepository = await deploy.isRepository()
+      if (!isRepository) return { repository: false, connected: Boolean(file?.repository), branch: file?.repository?.branch ?? null }
+      const branch = await deploy.currentBranch()
+      const [head, commits, drift] = await Promise.all([deploy.head(), deploy.log("HEAD", 25), run(repository.drift)])
+      return { repository: true, connected: Boolean(file?.repository), branch, head, commits, drift, wanted: file?.repository?.branch ?? null }
     }
 
     const handle: Handler = async (request: IncomingMessage, response: ServerResponse, route: string, context: RequestContext) => {
@@ -246,6 +314,107 @@ export const makeApiHandler = (options: ApiOptions) =>
           send(response, 200, await gitState())
           return true
         }
+        case "GET /players":
+          send(response, 200, moderation.players(Date.now()))
+          return true
+        case "POST /players/warn":
+        case "POST /players/kick":
+        case "POST /players/ban":
+        case "POST /players/unban":
+        case "POST /players/note":
+        case "POST /players/message": {
+          const action = route.slice("POST /players/".length)
+          requireRole(context, action === "unban" ? "admin" : "moderator")
+          const body = await readBody(request)
+          const key = typeof body.key === "string" ? body.key : ""
+          const text = typeof body.reason === "string" ? body.reason : typeof body.text === "string" ? body.text : ""
+          const now = Date.now()
+          await guard(async () => {
+            if (action === "warn") await moderation.warn(actor(context), key, text, now)
+            if (action === "kick") await moderation.kick(actor(context), key, text, now)
+            if (action === "ban") await moderation.ban(actor(context), key, text, typeof body.duration === "string" ? body.duration : "", body.includeLinked === true, now)
+            if (action === "unban") await moderation.unban(actor(context), key, text || "Ban revoked", now)
+            if (action === "note") moderation.note(actor(context), key, text, now)
+            if (action === "message") await moderation.message(actor(context), key, text)
+          })
+          send(response, 200, { ok: true })
+          return true
+        }
+        case "GET /bans":
+          send(response, 200, moderation.bans(Date.now()))
+          return true
+        case "POST /bans": {
+          requireRole(context, "moderator")
+          const body = await readBody(request)
+          await guard(() =>
+            moderation.banIdentifier(actor(context), typeof body.identifier === "string" ? body.identifier : "", typeof body.reason === "string" ? body.reason : "", typeof body.duration === "string" ? body.duration : "", Date.now())
+          )
+          send(response, 200, { ok: true })
+          return true
+        }
+        case "POST /bans/revoke": {
+          requireRole(context, "admin")
+          const body = await readBody(request)
+          await guard(() => moderation.revoke(actor(context), typeof body.id === "string" ? body.id : "", typeof body.reason === "string" ? body.reason : "", Date.now()))
+          send(response, 200, { ok: true })
+          return true
+        }
+        case "GET /resources": {
+          const entries = scanResources(resourcesFolder())
+          send(
+            response,
+            200,
+            entries.map((entry) => ({ ...entry, state: resourceStates.get(entry.name) ?? (resourceStates.size ? "stopped" : "unknown") }))
+          )
+          return true
+        }
+        case "GET /deploys":
+          send(response, 200, await guard(deployState))
+          return true
+        case "POST /deploys/fetch": {
+          requireRole(context, "admin")
+          const result = await guard(async () => {
+            const branch = await deploy.currentBranch()
+            await deploy.fetch(branch)
+            const incoming = await deploy.log(`HEAD..origin/${branch}`, 50)
+            const changes = incoming.length ? await deploy.changes(`HEAD..origin/${branch}`) : []
+            return { branch, incoming, changes }
+          })
+          send(response, 200, result)
+          return true
+        }
+        case "POST /deploys/apply": {
+          requireRole(context, "admin")
+          const body = await readBody(request)
+          await guard(async () => {
+            const drift = await run(repository.drift)
+            if (drift.some((entry) => entry.state !== "untracked") && body.force !== true) {
+              throw new DeployError(409, "Some files were edited on the server. Discard or commit them first.")
+            }
+            await deploy.fastForward(await deploy.currentBranch())
+          })
+          if (body.restart === true) await run(supervisor.restart)
+          send(response, 200, await guard(deployState))
+          return true
+        }
+        case "POST /deploys/branch": {
+          requireRole(context, "owner")
+          const body = await readBody(request)
+          const name = typeof body.name === "string" ? body.name.trim() : ""
+          if (!/^[\w./-]+$/.test(name)) throw new HttpError(400, "Pick a branch")
+          await guard(async () => {
+            const drift = await run(repository.drift)
+            if (drift.some((entry) => entry.state !== "untracked")) throw new DeployError(409, "Some files were edited on the server. Discard or commit them first.")
+            await deploy.switchBranch(name)
+          })
+          const file = readArgusFile(options.home)
+          if (file?.repository) writeArgusFile({ ...file, repository: { ...file.repository, branch: name } }, options.home)
+          send(response, 200, await guard(deployState))
+          return true
+        }
+        case "GET /deploys/branches":
+          send(response, 200, await guard(() => deploy.branches()))
+          return true
         default:
           return false
       }

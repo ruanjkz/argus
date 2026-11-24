@@ -1,4 +1,6 @@
+import { existsSync, readdirSync, statSync } from "node:fs"
 import net from "node:net"
+import { join } from "node:path"
 import readline from "node:readline"
 
 const scenario = process.env.FAKE_SCENARIO ?? "normal"
@@ -42,10 +44,51 @@ const hang = () => {
   setTimeout(() => hitch(4100), 150)
 }
 
+const NAMES = ["kxng", "vlt.ana", "mrkz", "dusk", "neblina", "tornado7", "lia", "zeca", "r4ven", "bruxo", "kaio_", "sereia"]
+const roster = Array.from({ length: players }, (_, index) => ({
+  id: 3 + index * 7,
+  name: index < NAMES.length ? NAMES[index] : `${NAMES[index % NAMES.length]}${Math.floor(index / NAMES.length)}`,
+  ping: 20 + ((index * 17) % 60),
+  identifiers: [
+    `license:${(index + 1).toString(16).padStart(40, "a")}`,
+    `discord:${100000000000000000n + BigInt(index)}`,
+    `ip:198.51.100.${10 + (index % 3)}`
+  ],
+  tokens: [`4:fake${index}`]
+}))
+let online = [...roster]
+
+const resourceStates = new Map()
+const scanResources = (root) => {
+  if (!root || !existsSync(root)) return
+  const walk = (folder, depth) => {
+    for (const entry of readdirSync(folder)) {
+      const full = join(folder, entry)
+      if (!statSync(full).isDirectory()) continue
+      if (/^\[.*\]$/.test(entry)) {
+        if (depth < 4) walk(full, depth + 1)
+      } else if (existsSync(join(full, "fxmanifest.lua")) || existsSync(join(full, "__resource.lua"))) {
+        resourceStates.set(entry, "started")
+      }
+    }
+  }
+  walk(root, 0)
+}
+scanResources(process.env.FAKE_RESOURCE_ROOT)
+resourceStates.set(resource, "started")
+
+const sendPlayers = () => trace({ type: "script_structured_trace", resource, payload: { type: "players", list: online } })
+const sendResources = () =>
+  trace({ type: "script_structured_trace", resource, payload: { type: "resources", list: [...resourceStates].map(([name, state]) => ({ name, state })) } })
+
 let heartbeat = null
 const startHeartbeat = () => {
-  const beat = () => trace({ type: "script_structured_trace", resource, payload: { type: "heartbeat", players } })
+  const beat = () => {
+    trace({ type: "script_structured_trace", resource, payload: { type: "heartbeat", players: online.length } })
+    sendPlayers()
+  }
   beat()
+  sendResources()
   heartbeat = setInterval(beat, heartbeatMs)
 }
 const stopHeartbeat = () => {
@@ -120,6 +163,37 @@ input.on("line", (line) => {
   }
   if (command === "status") {
     print("cmd", `${players} players online`)
+    return
+  }
+  const [name, ...args] = command.split(/\s+/)
+  if (name === "argus_kick") {
+    const id = Number(args[0])
+    const player = online.find((entry) => entry.id === id)
+    if (player) {
+      online = online.filter((entry) => entry !== player)
+      print("citizen-server-impl", `Dropped ${player.name}: ${args.slice(1).join(" ")}`)
+      sendPlayers()
+    }
+    return
+  }
+  if (name === "argus_warn") {
+    print("chat", `to ${args[0]}: ${args.slice(1).join(" ")}`)
+    return
+  }
+  if (name === "argus_reload_bans") {
+    print(`script:${resource}`, "Ban list reloaded")
+    return
+  }
+  if ((name === "ensure" || name === "start" || name === "restart") && args[0]) {
+    resourceStates.set(args[0], "started")
+    print("resources", `Started resource ${args[0]}`)
+    sendResources()
+    return
+  }
+  if (name === "stop" && args[0]) {
+    resourceStates.set(args[0], "stopped")
+    print("resources", `Stopping resource ${args[0]}`)
+    sendResources()
     return
   }
   if (command === "fake-error") {

@@ -132,7 +132,13 @@ const make = Effect.gen(function*() {
         case "script_structured_trace": {
           if (data.resource !== settings.heartbeatResource) return
           const heartbeat = decodeHeartbeat(data.payload)
-          if (Option.isNone(heartbeat)) return
+          if (Option.isNone(heartbeat)) {
+            const payload = data.payload
+            if (typeof payload === "object" && payload !== null && typeof (payload as { type?: unknown }).type === "string") {
+              yield* publish({ _tag: "Telemetry", kind: (payload as { type: string }).type, data: payload, time: yield* Clock.currentTimeMillis })
+            }
+            return
+          }
           const now = yield* Clock.currentTimeMillis
           const previous = yield* Ref.getAndSet(lastHeartbeat, Option.some(now))
           if (Option.isNone(previous) && (yield* SubscriptionRef.get(intent)) === "run") {

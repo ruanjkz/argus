@@ -42,7 +42,7 @@ const serverLayer = (file: ArgusFile, options: StartOptions) => {
     executable: process.execPath,
     args: isPackaged ? [] : [FAKE_SERVER_SCRIPT],
     cwd: undefined,
-    env: { FAKE_HEARTBEAT_MS: "1000", ...(isPackaged ? { [FAKE_SERVER_ENV]: "1" } : {}) },
+    env: { FAKE_HEARTBEAT_MS: "1000", FAKE_RESOURCE_ROOT: file.settings.dataFolder ? join(file.settings.dataFolder, "resources") : "", ...(isPackaged ? { [FAKE_SERVER_ENV]: "1" } : {}) },
     resourcesPath: file.settings.dataFolder ? join(file.settings.dataFolder, "resources") : FAKE_RESOURCES_FOLDER
   })
 }

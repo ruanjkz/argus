@@ -59,6 +59,7 @@ const render = (event: SupervisorEvent) => {
     case "StatusChanged":
       return Console.log(`${DIM}[argus] status ${event.status}${event.pid === undefined ? "" : ` pid ${event.pid}`}${RESET}`)
     case "Incident":
+    case "Telemetry":
       return Effect.void
     case "PlayersChanged":
       return Console.log(`${DIM}[argus] ${event.players} players online${RESET}`)

@@ -268,6 +268,8 @@ const make = Effect.gen(function*() {
           : Effect.void
       case "Incident":
         return onIncident(event.incident)
+      case "Telemetry":
+        return Effect.void
     }
   }
 
