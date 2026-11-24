@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
 import { useLiveServer } from "@/components/live-server"
+import { RESOURCE_START_MS, RESOURCE_STOP_MS, useResources } from "@/components/resources-store"
 import {
   bootLines,
   canRun,
@@ -50,14 +51,17 @@ const ConsoleContext = createContext<ConsoleStore | null>(null)
 
 export function ConsoleProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
+  const resources = useResources()
   const [lines, setLines] = useState<ConsoleLine[]>(INITIAL_CONSOLE)
   const nextId = useRef(INITIAL_CONSOLE.length)
   const startedAt = useRef<number | null>(null)
   const pending = useRef(new Set<number>())
   const liveRef = useRef(live)
+  const resourcesRef = useRef(resources)
 
   useEffect(() => {
     liveRef.current = live
+    resourcesRef.current = resources
   })
 
   const clock = useCallback(() => {
@@ -170,13 +174,21 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
 
       append([echo])
       const target = args[0]
-      const resource = RESOURCES.find((entry) => entry.name === target)
+      const resource = target === undefined ? undefined : resourcesRef.current.byName.get(target)
       const missing: ConsoleDraft = {
         kind: "stderr",
         source: "citizen-server-impl",
         tag: "stderr",
         text: `Couldn't find resource ${target ?? ""}.`,
       }
+      const resourceLine = (text: string): ConsoleDraft => ({ kind: "stdout", source: "resources", text: `${channel("resources")} ${text}` })
+      const startLines = (name: string, failure: string | undefined): ConsoleDraft[] =>
+        failure
+          ? [
+              { kind: "stderr", source: "resources", tag: "stderr", text: `${failure}.` },
+              { kind: "stderr", source: "resources", tag: "stderr", text: `Couldn't start resource ${name}.` },
+            ]
+          : [resourceLine(`Started resource ${name}`)]
 
       switch (command.name) {
         case "status": {
@@ -206,21 +218,39 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
         }
         case "ensure":
         case "restart":
+        case "start": {
           if (!resource) {
             later(100, [missing])
             break
           }
-          later(220, [{ kind: "stdout", source: "resources", text: `${channel("resources")} Stopping resource ${resource.name}` }])
-          later(780, [{ kind: "stdout", source: "resources", text: `${channel("resources")} Started resource ${resource.name}` }])
+          const running = resource.status === "started"
+          if (command.name === "start" && running) {
+            later(100, [resourceLine(`Resource ${resource.name} is already started`)])
+            break
+          }
+          resourcesRef.current.restart(resource.name)
+          if (running) later(RESOURCE_STOP_MS - 80, [resourceLine(`Stopping resource ${resource.name}`)])
+          later((running ? RESOURCE_STOP_MS : 0) + RESOURCE_START_MS, startLines(resource.name, resource.failure))
           break
-        case "start":
-          later(400, resource ? [{ kind: "stdout", source: "resources", text: `${channel("resources")} Started resource ${resource.name}` }] : [missing])
-          break
+        }
         case "stop":
-          later(300, resource ? [{ kind: "stdout", source: "resources", text: `${channel("resources")} Stopping resource ${resource.name}` }] : [missing])
+          if (!resource) {
+            later(100, [missing])
+            break
+          }
+          if (resource.required) {
+            later(80, [{ kind: "warn", source: "argus", tag: "argus", text: `Blocked stop ${resource.name}: Argus needs this resource to watch the server` }])
+            break
+          }
+          if (resource.status !== "started") {
+            later(100, [resourceLine(`Resource ${resource.name} is not running`)])
+            break
+          }
+          resourcesRef.current.stop(resource.name)
+          later(RESOURCE_STOP_MS, [resourceLine(`Stopping resource ${resource.name}`)])
           break
         case "refresh":
-          later(500, [{ kind: "stdout", source: "resources", text: `${channel("resources")} Found ${RESOURCES.length} resources.` }])
+          later(500, [resourceLine(`Found ${RESOURCES.length} resources.`)])
           break
         case "profiler": {
           const frames = Number(args[1]) || 300

@@ -7,6 +7,7 @@ import { Search01Icon } from "@hugeicons/core-free-icons"
 import { usePlayers, type PlayerView } from "@/components/players-store"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { handleRadioKeyDown } from "@/lib/radio-group"
+import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
 
 import { PlayerDetail } from "./player-detail"
@@ -22,18 +23,6 @@ function isFlagged(player: PlayerView, byKey: Map<string, PlayerView>) {
   )
 }
 
-function useIsDesktop() {
-  const [desktop, setDesktop] = useState(true)
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)")
-    const update = () => setDesktop(query.matches)
-    update()
-    query.addEventListener("change", update)
-    return () => query.removeEventListener("change", update)
-  }, [])
-  return desktop
-}
-
 export function PlayersPage() {
   const { players, online, byKey, elapsed } = usePlayers()
   const [filter, setFilter] = useState<Filter>("online")
@@ -43,6 +32,17 @@ export function PlayersPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const deferredQuery = useDeferredValue(query.trim().toLowerCase())
   const desktop = useIsDesktop()
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("player")
+    if (!requested) return
+    const open = () => {
+      setSelectedKey(requested)
+      setFilter("all")
+      setSheetOpen(true)
+    }
+    open()
+  }, [])
 
   const counts = useMemo(
     () => ({

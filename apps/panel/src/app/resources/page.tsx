@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/coming-soon"
+import { ResourcesPage } from "@/components/resources/resources-page"
 
-export default function ResourcesPage() {
-  return <ComingSoon title="Resources" description="Start, stop and restart resources, with grouped errors per resource." />
+export default function Resources() {
+  return <ResourcesPage />
 }

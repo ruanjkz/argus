@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { useConsole } from "@/components/console-store"
 import { useLiveServer } from "@/components/live-server"
-import { ONLINE_ORDER, ROSTER, type BanInfo, type HistoryEntry, type HistoryType, type RosterPlayer } from "@/lib/players"
+import { recordForManualBan, recordsForPlayer, type BanRecord, type ManualBan } from "@/lib/bans"
+import { ONLINE_ORDER, ROSTER, type BanInfo, type HistoryEntry, type HistoryType, type Identifier, type IdentifierKind, type RosterPlayer } from "@/lib/players"
 
 export type PlayerView = RosterPlayer & {
   online: boolean
@@ -17,11 +18,14 @@ type PlayersStore = {
   players: PlayerView[]
   online: PlayerView[]
   byKey: Map<string, PlayerView>
+  banRecords: BanRecord[]
   elapsed: number
   warn: (key: string, reason: string) => void
   kick: (key: string, reason: string) => void
   ban: (key: string, reason: string, duration: string, includeLinked: boolean) => void
-  unban: (key: string) => void
+  unban: (key: string, reason?: string) => void
+  banIdentifier: (identifier: string, reason: string, duration: string) => void
+  revokeManualBan: (entryId: string, reason: string) => void
   note: (key: string, text: string) => void
   message: (key: string, text: string) => void
 }
@@ -30,6 +34,7 @@ type Overrides = {
   history: Record<string, HistoryEntry[]>
   bans: Record<string, BanInfo | null>
   removed: string[]
+  manualBans: ManualBan[]
 }
 
 const PlayersContext = createContext<PlayersStore | null>(null)
@@ -43,7 +48,7 @@ function hash(value: string) {
 export function PlayersProvider({ children }: { children: ReactNode }) {
   const live = useLiveServer()
   const consoleStore = useConsole()
-  const [overrides, setOverrides] = useState<Overrides>({ history: {}, bans: {}, removed: [] })
+  const [overrides, setOverrides] = useState<Overrides>({ history: {}, bans: {}, removed: [], manualBans: [] })
   const [elapsed, setElapsed] = useState(0)
   const entryId = useRef(0)
   const startedAt = useRef<number | null>(null)
@@ -161,15 +166,56 @@ export function PlayersProvider({ children }: { children: ReactNode }) {
   )
 
   const unban = useCallback(
-    (key: string) => {
+    (key: string, reason = "Ban revoked") => {
       const player = byKeyRef.current.get(key)
       if (!player?.banned) return
       setOverrides((previous) => ({ ...previous, bans: { ...previous.bans, [key]: null } }))
-      addHistory(key, "unban", "Ban revoked")
+      addHistory(key, "unban", reason)
       live.logAction(`revoked the ban on ${player.name}`)
       consoleStore.announce(`Ban revoked for ${player.name}`)
     },
     [addHistory, live, consoleStore],
+  )
+
+  const banIdentifier = useCallback(
+    (value: string, reason: string, duration: string) => {
+      const known = [...byKeyRef.current.values()].find((player) => player.identifiers.some((identifier) => identifier.value === value))
+      if (known) {
+        ban(known.key, reason, duration, false)
+        return
+      }
+      entryId.current += 1
+      const identifier: Identifier = { kind: value.slice(0, value.indexOf(":")) as IdentifierKind, value }
+      const manual: ManualBan = { entryId: `h-manual-${entryId.current}`, identifier, reason, duration, secondsAgo: -elapsedRef.current }
+      setOverrides((previous) => ({ ...previous, manualBans: [manual, ...previous.manualBans] }))
+      live.logAction(`banned ${value.length > 22 ? `${value.slice(0, 22)}…` : value} for ${duration.toLowerCase()}`)
+      consoleStore.announce(`Banned ${value}  ${duration}: ${reason}`)
+    },
+    [ban, live, consoleStore],
+  )
+
+  const revokeManualBan = useCallback(
+    (manualId: string, reason: string) => {
+      const secondsAgo = -elapsedRef.current
+      setOverrides((previous) => ({
+        ...previous,
+        manualBans: previous.manualBans.map((entry) =>
+          entry.entryId === manualId && !entry.revoked ? { ...entry, revoked: { actor: "you", reason, secondsAgo } } : entry,
+        ),
+      }))
+      live.logAction("revoked a ban by identifier")
+      consoleStore.announce(`Ban revoked: ${reason}`)
+    },
+    [live, consoleStore],
+  )
+
+  const banRecords = useMemo<BanRecord[]>(
+    () =>
+      [
+        ...players.flatMap((player) => recordsForPlayer(player, elapsed)),
+        ...overrides.manualBans.map((entry) => recordForManualBan(entry, elapsed)),
+      ].sort((first, second) => first.issuedSecondsAgo - second.issuedSecondsAgo),
+    [players, overrides.manualBans, elapsed],
   )
 
   const note = useCallback((key: string, text: string) => addHistory(key, "note", text), [addHistory])
@@ -184,8 +230,8 @@ export function PlayersProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<PlayersStore>(
-    () => ({ players, online, byKey, elapsed, warn, kick, ban, unban, note, message }),
-    [players, online, byKey, elapsed, warn, kick, ban, unban, note, message],
+    () => ({ players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message }),
+    [players, online, byKey, banRecords, elapsed, warn, kick, ban, unban, banIdentifier, revokeManualBan, note, message],
   )
 
   return <PlayersContext.Provider value={value}>{children}</PlayersContext.Provider>

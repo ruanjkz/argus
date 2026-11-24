@@ -1,12 +1,14 @@
 "use client"
 
-import { useRef, useState, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 
 import type { PlayerView } from "@/components/players-store"
 import { usePlayers } from "@/components/players-store"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { BAN_DURATIONS } from "@/lib/bans"
 import { handleRadioKeyDown } from "@/lib/radio-group"
+import { useFieldError } from "@/lib/use-field-error"
 import { cn } from "@/lib/utils"
 
 export type PlayerAction = "warn" | "kick" | "ban" | "message"
@@ -17,8 +19,6 @@ const TEMPLATES: Record<PlayerAction, string[]> = {
   ban: ["Cheating", "Ban evasion", "Toxic chat after warnings", "Exploiting"],
   message: ["Please check the rules channel", "Join the staff voice channel"],
 }
-
-const DURATIONS = ["1 day", "7 days", "30 days", "Permanent"]
 
 const COPY: Record<PlayerAction, { title: string; description: (player: PlayerView) => string; confirm: string; field: string }> = {
   warn: {
@@ -47,11 +47,6 @@ const COPY: Record<PlayerAction, { title: string; description: (player: PlayerVi
   },
 }
 
-function readMs(variable: string, fallback: number) {
-  const value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(variable))
-  return Number.isFinite(value) ? value : fallback
-}
-
 export function ActionDialog({
   action,
   player,
@@ -76,37 +71,8 @@ function ActionForm({ action, player, onClose }: { action: PlayerAction; player:
   const [duration, setDuration] = useState("7 days")
   const unbannedLinks = player.linked.map((link) => store.byKey.get(link.key)).filter((entry): entry is PlayerView => Boolean(entry && !entry.banned))
   const [includeLinked, setIncludeLinked] = useState(unbannedLinks.length > 0)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const fieldRef = useRef<HTMLTextAreaElement>(null)
-  const revertTimer = useRef<number | null>(null)
+  const { wrapRef, fieldRef, show: showError, clear: clearError } = useFieldError<HTMLTextAreaElement>()
   const copy = COPY[action]
-
-  function showError() {
-    const wrap = wrapRef.current
-    const field = wrap?.querySelector<HTMLElement>(".t-input")
-    if (!wrap || !field) return
-    wrap.classList.add("is-error")
-    field.classList.add("is-error")
-    field.classList.remove("is-shaking")
-    void field.offsetWidth
-    field.classList.add("is-shaking")
-    const shakeMs = readMs("--shake-dur-a", 80) * 2 + readMs("--shake-dur-b", 60) * 2
-    window.setTimeout(() => field.classList.remove("is-shaking"), shakeMs + 20)
-    if (revertTimer.current !== null) window.clearTimeout(revertTimer.current)
-    revertTimer.current = window.setTimeout(() => {
-      revertTimer.current = null
-      wrap.classList.remove("is-error")
-      field.classList.remove("is-error")
-    }, shakeMs + readMs("--revert-hold", 3000))
-    fieldRef.current?.focus()
-  }
-
-  function clearError() {
-    if (revertTimer.current !== null) window.clearTimeout(revertTimer.current)
-    revertTimer.current = null
-    wrapRef.current?.classList.remove("is-error")
-    wrapRef.current?.querySelector(".t-input")?.classList.remove("is-error")
-  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -178,7 +144,7 @@ function ActionForm({ action, player, onClose }: { action: PlayerAction; player:
               Duration
             </span>
             <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-labelledby="ban-duration-label">
-              {DURATIONS.map((value) => (
+              {BAN_DURATIONS.map((value) => (
                 <button
                   key={value}
                   type="button"

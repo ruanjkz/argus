@@ -8,6 +8,7 @@ import { ArgusMark } from "@/components/argus-mark"
 import { ConsoleProvider } from "@/components/console-store"
 import { PlayersProvider } from "@/components/players-store"
 import { LiveServerProvider } from "@/components/live-server"
+import { ResourcesProvider } from "@/components/resources-store"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
@@ -83,9 +84,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 function ServerProviders({ children }: { children: ReactNode }) {
   return (
     <LiveServerProvider>
-      <ConsoleProvider>
-        <PlayersProvider>{children}</PlayersProvider>
-      </ConsoleProvider>
+      <ResourcesProvider>
+        <ConsoleProvider>
+          <PlayersProvider>{children}</PlayersProvider>
+        </ConsoleProvider>
+      </ResourcesProvider>
     </LiveServerProvider>
   )
 }

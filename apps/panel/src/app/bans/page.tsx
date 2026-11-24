@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/coming-soon"
+import { BansPage } from "@/components/bans/bans-page"
 
-export default function BansPage() {
-  return <ComingSoon title="Bans" description="Bans, warnings and appeals, with evidence attached to each action." />
+export default function Bans() {
+  return <BansPage />
 }

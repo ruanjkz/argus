@@ -1,3 +1,5 @@
+import { RESOURCE_CATALOG } from "./resources"
+
 export function createRandom(seed: number) {
   let state = seed >>> 0
   return () => {
@@ -9,36 +11,12 @@ export function createRandom(seed: number) {
   }
 }
 
-export type ResourceState = "started" | "stopped" | "error"
+export type Resource = { name: string; state: "started" | "stopped" }
 
-export type Resource = { name: string; state: ResourceState; detail?: string }
-
-export const RESOURCES: Resource[] = [
-  { name: "argus", state: "started" },
-  { name: "oxmysql", state: "started" },
-  { name: "ox_lib", state: "started" },
-  { name: "pma-voice", state: "started" },
-  { name: "screenshot-basic", state: "started" },
-  { name: "arena", state: "started" },
-  { name: "arena_ui", state: "started" },
-  { name: "matchmaking", state: "started" },
-  { name: "ranked", state: "started" },
-  { name: "lobby", state: "started" },
-  { name: "spectate", state: "started" },
-  { name: "loadouts", state: "started" },
-  { name: "inventory", state: "started", detail: "slow tick" },
-  { name: "shop", state: "error", detail: "script error" },
-  { name: "garage", state: "started" },
-  { name: "killfeed", state: "started" },
-  { name: "hud", state: "started" },
-  { name: "chat", state: "started" },
-  { name: "discord_roles", state: "started" },
-  { name: "anticheat_stats", state: "started" },
-  { name: "maps_vinewood", state: "started" },
-  { name: "maps_sandy", state: "stopped", detail: "stopped" },
-  { name: "weapons_meta", state: "started" },
-  { name: "vehicles_meta", state: "started" },
-]
+export const RESOURCES: Resource[] = RESOURCE_CATALOG.map((entry) => ({
+  name: entry.name,
+  state: entry.initial === "started" ? "started" : "stopped",
+}))
 
 export type Player = { id: number; name: string; ping: number; minutesOnline: number }
 

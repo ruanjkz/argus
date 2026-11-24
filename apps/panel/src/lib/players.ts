@@ -186,6 +186,22 @@ export const ROSTER: RosterPlayer[] = (() => {
     { id: "h-tor-2", type: "warn", actor: "admin", reason: "Team killing in ranked", secondsAgo: 86400 * 3 },
   )
   byName(roster, "dusk").history.push({ id: "h-dusk-kick", type: "kick", actor: "lia.mod", reason: "AFK", secondsAgo: 610 })
+  byName(roster, "mrkz").history.push({
+    id: "h-mrkz-ban",
+    type: "ban",
+    actor: "lia.mod",
+    reason: "Exploiting a map glitch on Vinewood",
+    duration: "1 day",
+    secondsAgo: 86400 * 12,
+  })
+  byName(roster, "zeca").history.push(
+    { id: "h-zeca-unban", type: "unban", actor: "admin", reason: "Appeal accepted, the clip showed a lag spike", secondsAgo: 86400 * 8 },
+    { id: "h-zeca-ban", type: "ban", actor: "argus", reason: "Suspected aim assist in ranked", duration: "30 days", secondsAgo: 86400 * 9 },
+  )
+  byName(roster, "bruxo").history.push(
+    { id: "h-bruxo-ban", type: "ban", actor: "admin", reason: "Toxic chat after a warning", duration: "7 days", secondsAgo: 86400 * 21 },
+    { id: "h-bruxo-warn", type: "warn", actor: "admin", reason: "Toxic chat", secondsAgo: 86400 * 22 },
+  )
 
   return roster
 })()
