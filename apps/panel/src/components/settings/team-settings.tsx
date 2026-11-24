@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { formatAgo } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const ROLE_LABEL: Record<AgentRole, string> = { owner: "Owner", admin: "Admin", moderator: "Moderator" }
 
 const ROLE_HINT: Record<AgentRole, string> = {
-  owner: "Everything, including settings, the repository and remote access.",
-  admin: "Starts and stops the server, runs any command, manages moderators.",
-  moderator: "Watches the console, and can say, kick and check status.",
+  owner: t("Everything, including settings, the repository and remote access."),
+  admin: t("Starts and stops the server, runs any command, manages moderators."),
+  moderator: t("Watches the console, and can say, kick and check status."),
 }
 
 const SMALL =
@@ -45,7 +46,7 @@ export function TeamSettings() {
         setAccounts(list)
         setLoadedAt(Date.now())
       })
-      .catch((failure: unknown) => setError(failure instanceof Error ? failure.message : "Could not load the team"))
+      .catch((failure: unknown) => setError(failure instanceof Error ? failure.message : t("Could not load the team")))
   }, [])
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function TeamSettings() {
       await run()
       load()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "That did not work")
+      setError(failure instanceof Error ? failure.message : t("That did not work"))
     }
   }
 
@@ -67,22 +68,22 @@ export function TeamSettings() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="section-team-title" className="text-sm font-semibold">
-            Team
+            {t("Team")}
           </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Logins for your staff. New members pick their own password on the first sign in.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("Logins for your staff. New members pick their own password on the first sign in.")}</p>
         </div>
         {live && actorRole !== "moderator" ? (
           <button type="button" onClick={() => setAdding(true)} className={cn(SMALL, "shrink-0 border border-border hover:bg-muted")}>
             <HugeiconsIcon icon={Add01Icon} strokeWidth={1.75} className="size-3.5" />
-            Add member
+            {t("Add member")}
           </button>
         ) : null}
       </div>
 
       {!live ? (
-        <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-xs text-muted-foreground">Start Argus to manage the team.</p>
+        <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-xs text-muted-foreground">{t("Start Argus to manage the team.")}</p>
       ) : actorRole === "moderator" ? (
-        <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-xs text-muted-foreground">Only admins and the owner manage the team.</p>
+        <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-xs text-muted-foreground">{t("Only admins and the owner manage the team.")}</p>
       ) : (
         <ul className="mt-4 flex flex-col divide-y divide-border/60 rounded-xl border border-border/70">
           {accounts.map((member) => {
@@ -94,21 +95,21 @@ export function TeamSettings() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-foreground/90">
                     {member.username}
-                    {self ? <span className="ml-1.5 text-xs text-muted-foreground">you</span> : null}
+                    {self ? <span className="ml-1.5 text-xs text-muted-foreground">{t("you")}</span> : null}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
                     {member.disabled
-                      ? "Access turned off"
+                      ? t("Access turned off")
                       : member.mustChangePassword
-                        ? "Has not picked a password yet"
+                        ? t("Has not picked a password yet")
                         : member.lastLoginAt
-                          ? `Last sign in ${formatAgo(Math.max(0, Math.floor((loadedAt - member.lastLoginAt) / 1000)))}`
-                          : "Never signed in"}
+                          ? t("Last sign in {ago}", { ago: formatAgo(Math.max(0, Math.floor((loadedAt - member.lastLoginAt) / 1000))) })
+                          : t("Never signed in")}
                   </p>
                 </div>
                 {manageable ? (
                   <select
-                    aria-label={`Role of ${member.username}`}
+                    aria-label={t("Role of {name}", { name: member.username })}
                     value={member.role}
                     onChange={(event) => void act(() => agentCall("PUT", "accounts", { id: member.id, role: event.target.value }))}
                     className="h-8 rounded-lg border border-border bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -117,12 +118,12 @@ export function TeamSettings() {
                       .filter((role) => canManage(actorRole, role))
                       .map((role) => (
                         <option key={role} value={role}>
-                          {ROLE_LABEL[role]}
+                          {t(ROLE_LABEL[role])}
                         </option>
                       ))}
                   </select>
                 ) : (
-                  <span className="rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">{ROLE_LABEL[member.role]}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">{t(ROLE_LABEL[member.role])}</span>
                 )}
                 {manageable ? (
                   <div className="flex gap-1">
@@ -133,17 +134,17 @@ export function TeamSettings() {
                       }
                       className={cn(SMALL, "hover:bg-muted")}
                     >
-                      Reset password
+                      {t("Reset password")}
                     </button>
                     <button
                       type="button"
                       onClick={() => void act(() => agentCall("PUT", "accounts", { id: member.id, disabled: !member.disabled }))}
                       className={cn(SMALL, "hover:bg-muted")}
                     >
-                      {member.disabled ? "Turn on" : "Turn off"}
+                      {member.disabled ? t("Turn on") : t("Turn off")}
                     </button>
                     <button type="button" onClick={() => setRemoving(member)} className={cn(SMALL, "text-destructive hover:bg-destructive/10")}>
-                      Remove
+                      {t("Remove")}
                     </button>
                   </div>
                 ) : null}
@@ -175,15 +176,15 @@ export function TeamSettings() {
       <Dialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <DialogContent showCloseButton={false} className="rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Remove {removing?.username}?</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{t("Remove {name}?", { name: removing?.username ?? "" })}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              They are signed out right away and cannot sign in again. To pause access instead, use Turn off.
+              {t("They are signed out right away and cannot sign in again. To pause access instead, use Turn off.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -194,7 +195,7 @@ export function TeamSettings() {
               }}
               className="h-8 rounded-lg bg-destructive px-3 text-white hover:bg-destructive/85 dark:text-white"
             >
-              Remove
+              {t("Remove")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -229,7 +230,7 @@ function AddMemberDialog({
       setUsername("")
       onCreated(created)
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not create the login")
+      setError(failure instanceof Error ? failure.message : t("Could not create the login"))
     } finally {
       setBusy(false)
     }
@@ -240,14 +241,14 @@ function AddMemberDialog({
       <DialogContent showCloseButton={false} className="rounded-2xl p-5 sm:max-w-md">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Add a team member</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{t("Add a team member")}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Argus makes a temporary password. Send it to them privately; they choose their own on the first sign in.
+              {t("Argus makes a temporary password. Send it to them privately; they choose their own on the first sign in.")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">
             <label htmlFor="member-username" className="text-xs font-medium">
-              Username
+              {t("Username")}
             </label>
             <input
               id="member-username"
@@ -261,8 +262,8 @@ function AddMemberDialog({
               required
             />
           </div>
-          <div className="grid gap-1.5" role="radiogroup" aria-label="Role">
-            <span className="text-xs font-medium">Role</span>
+          <div className="grid gap-1.5" role="radiogroup" aria-label={t("Role")}>
+            <span className="text-xs font-medium">{t("Role")}</span>
             {roles.map((option) => (
               <label
                 key={option}
@@ -273,8 +274,8 @@ function AddMemberDialog({
               >
                 <input type="radio" name="member-role" checked={role === option} onChange={() => setRole(option)} className="mt-0.5 accent-foreground" />
                 <span>
-                  <span className="block text-sm">{ROLE_LABEL[option]}</span>
-                  <span className="block text-xs text-muted-foreground">{ROLE_HINT[option]}</span>
+                  <span className="block text-sm">{t(ROLE_LABEL[option])}</span>
+                  <span className="block text-xs text-muted-foreground">{t(ROLE_HINT[option])}</span>
                 </span>
               </label>
             ))}
@@ -283,11 +284,11 @@ function AddMemberDialog({
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button type="button" variant="outline" className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button type="submit" disabled={busy || username.length < 2} className="h-8 rounded-lg px-3">
-              Create login
+              {t("Create login")}
             </Button>
           </DialogFooter>
         </form>
@@ -301,32 +302,32 @@ function TemporaryPasswordDialog({ created, onClose }: { created: Created | null
     <Dialog open={created !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent showCloseButton={false} className="rounded-2xl p-5 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold">Send this to {created?.account.username}</DialogTitle>
+          <DialogTitle className="text-sm font-semibold">{t("Send this to {name}", { name: created?.account.username ?? "" })}</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Argus shows this password only once. They will be asked to replace it right after signing in.
+            {t("Argus shows this password only once. They will be asked to replace it right after signing in.")}
           </DialogDescription>
         </DialogHeader>
         {created ? (
           <div className="grid gap-2 rounded-xl bg-muted p-3 text-sm">
             <div className="group flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">Username</span>
+              <span className="text-xs text-muted-foreground">{t("Username")}</span>
               <span className="flex items-center gap-1 font-mono">
                 {created.account.username}
-                <CopyButton value={created.account.username} label="Copy the username" />
+                <CopyButton value={created.account.username} label={t("Copy the username")} />
               </span>
             </div>
             <div className="group flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">Temporary password</span>
+              <span className="text-xs text-muted-foreground">{t("Temporary password")}</span>
               <span className="flex items-center gap-1 font-mono">
                 {created.temporaryPassword}
-                <CopyButton value={created.temporaryPassword} label="Copy the password" />
+                <CopyButton value={created.temporaryPassword} label={t("Copy the password")} />
               </span>
             </div>
             <div className="group flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">Address</span>
+              <span className="text-xs text-muted-foreground">{t("Address")}</span>
               <span className="flex min-w-0 items-center gap-1 font-mono text-xs">
                 <span className="truncate">{typeof window === "undefined" ? "" : window.location.origin}</span>
-                <CopyButton value={typeof window === "undefined" ? "" : window.location.origin} label="Copy the address" />
+                <CopyButton value={typeof window === "undefined" ? "" : window.location.origin} label={t("Copy the address")} />
               </span>
             </div>
           </div>
@@ -334,7 +335,7 @@ function TemporaryPasswordDialog({ created, onClose }: { created: Created | null
         <DialogFooter>
           <DialogClose asChild>
             <Button autoFocus className="h-8 rounded-lg px-3">
-              Done
+              {t("Done")}
             </Button>
           </DialogClose>
         </DialogFooter>

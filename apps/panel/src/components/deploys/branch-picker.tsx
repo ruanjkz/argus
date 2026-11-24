@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { BRANCHES } from "@/lib/deploys"
 import { formatAgo } from "@/lib/mock"
+import { t } from "@/lib/i18n"
 
 export function BranchPicker() {
   const { branch, building, drift, switchBranch } = useDeploys()
@@ -63,7 +64,7 @@ export function BranchPicker() {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72 rounded-xl">
-          <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Deploy from branch</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">{t("Deploy from branch")}</DropdownMenuLabel>
           <label className="mx-1 mb-1 flex h-8 items-center gap-2 rounded-lg bg-muted px-2.5 text-muted-foreground focus-within:ring-2 focus-within:ring-ring">
             <HugeiconsIcon icon={Search01Icon} strokeWidth={1.75} className="size-3.5 shrink-0" />
             <input
@@ -80,8 +81,8 @@ export function BranchPicker() {
               autoFocus
               spellCheck={false}
               autoComplete="off"
-              placeholder="Find a branch"
-              aria-label="Find a branch"
+              placeholder={t("Find a branch")}
+              aria-label={t("Find a branch")}
               className="min-w-0 flex-1 bg-transparent font-mono text-xs text-foreground outline-none placeholder:font-sans placeholder:text-muted-foreground"
             />
             {query ? <span className="font-mono text-[11px] tabular-nums">{matches.length}</span> : null}
@@ -118,7 +119,7 @@ export function BranchPicker() {
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -128,7 +129,7 @@ export function BranchPicker() {
               }}
               className="h-8 rounded-lg px-3"
             >
-              Switch branch
+              {t("Switch branch")}
             </Button>
           </DialogFooter>
         </DialogContent>

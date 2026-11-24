@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 
 import { useAgent } from "@/components/agent-store"
+import { t } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 const SAMPLE_PAGES: Record<string, string> = {
@@ -38,7 +39,7 @@ export function AgentBanner() {
         tone === "warning" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground",
       )}
     >
-      {text}
+      {t(text)}
     </p>
   )
 }

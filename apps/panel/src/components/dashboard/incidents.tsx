@@ -9,13 +9,14 @@ import { AnimatedNumber } from "@/components/motion-primitives"
 import { formatAgo, type Incident, type IncidentKind } from "@/lib/mock"
 import { IncidentOriginText } from "@/components/incident-origin"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { Panel } from "./panel"
 
 const KIND_META: Record<IncidentKind, { icon: IconSvgElement; tone: string; label: string }> = {
-  error: { icon: Alert02Icon, tone: "text-destructive", label: "Script error" },
-  hang: { icon: Clock01Icon, tone: "text-destructive", label: "Thread hung" },
-  warn: { icon: Activity01Icon, tone: "text-warning", label: "Slow tick" },
+  error: { icon: Alert02Icon, tone: "text-destructive", label: t("Script error") },
+  hang: { icon: Clock01Icon, tone: "text-destructive", label: t("Thread hung") },
+  warn: { icon: Activity01Icon, tone: "text-warning", label: t("Slow tick") },
 }
 
 export function Incidents() {
@@ -23,7 +24,7 @@ export function Incidents() {
   const total = incidents.reduce((sum, incident) => sum + incident.count, 0)
 
   return (
-    <Panel title="Incidents" meta={`${incidents.length} groups  ${total} events today`} bodyClassName="px-2 pb-2">
+    <Panel title={t("Incidents")} meta={`${incidents.length} groups  ${total} events today`} bodyClassName="px-2 pb-2">
       <ul className="flex flex-col">
         {incidents.map((incident) => (
           <IncidentRow key={incident.id} incident={incident} />
@@ -84,13 +85,13 @@ function IncidentExplanation({ incident }: { incident: Incident }) {
       </p>
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{what}</p>
       <dl className="mt-3 grid grid-cols-[3.25rem_1fr] gap-x-3 gap-y-2 text-xs leading-relaxed">
-        <dt className="text-muted-foreground">Impact</dt>
+        <dt className="text-muted-foreground">{t("Impact")}</dt>
         <dd className="text-foreground/90">{impact}</dd>
-        <dt className="text-muted-foreground">Fix</dt>
+        <dt className="text-muted-foreground">{t("Fix")}</dt>
         <dd className="text-foreground/90">{fix}</dd>
         {incident.introducedBy ? (
           <>
-            <dt className="text-muted-foreground">Since</dt>
+            <dt className="text-muted-foreground">{t("Since")}</dt>
             <dd className="text-foreground/90">
               <IncidentOriginText origin={incident.introducedBy} />
             </dd>

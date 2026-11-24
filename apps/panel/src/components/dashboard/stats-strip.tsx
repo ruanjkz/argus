@@ -9,6 +9,7 @@ import { nextRestartTime } from "@/lib/settings"
 import { AnimatedNumber, TextSwap } from "@/components/motion-primitives"
 import { formatDuration } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const TICK_BUDGET = 50
 
@@ -18,22 +19,22 @@ export function StatsStrip() {
   const { restartTimes } = useSettings().settings
   const nextRestart = nextRestartTime(restartTimes, CONSOLE_END_SECONDS)
   const online = status === "online"
-  const uptimeDetail = online ? (nextRestart ? `next restart ${nextRestart}` : "no scheduled restart") : status === "offline" ? "stopped by you" : "waiting for FXServer"
+  const uptimeDetail = online ? (nextRestart ? `next restart ${nextRestart}` : t("no scheduled restart")) : status === "offline" ? t("stopped by you") : t("waiting for FXServer")
 
   return (
     <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 lg:grid-cols-4">
       <Stat
-        label="Players"
+        label={t("Players")}
         value={
           <>
             <AnimatedNumber value={players} />
             {maxPlayers ? <span className="text-muted-foreground"> / {maxPlayers}</span> : null}
           </>
         }
-        detail={live ? "from the argus heartbeat" : `peak ${peakPlayers} today`}
+        detail={live ? t("from the argus heartbeat") : `peak ${peakPlayers} today`}
       />
       <Stat
-        label="Tick avg"
+        label={t("Tick avg")}
         value={
           !measured ? (
             <span className="text-muted-foreground">—</span>
@@ -44,11 +45,11 @@ export function StatsStrip() {
           </>
           )
         }
-        detail={measured ? `peak ${peakTick.toFixed(0)} ms  budget ${TICK_BUDGET} ms` : "not measured yet"}
+        detail={measured ? `peak ${peakTick.toFixed(0)} ms  budget ${TICK_BUDGET} ms` : t("not measured yet")}
         detailTone={measured && peakTick > TICK_BUDGET ? "warning" : undefined}
       />
       <Stat
-        label="Memory"
+        label={t("Memory")}
         value={
           measured ? (
             <>
@@ -59,11 +60,11 @@ export function StatsStrip() {
             <span className="text-muted-foreground">—</span>
           )
         }
-        detail={measured ? "FXServer process" : "not measured yet"}
+        detail={measured ? t("FXServer process") : t("not measured yet")}
       />
       <Stat
-        label="Uptime"
-        value={<TextSwap text={online ? formatDuration(uptime) : STATUS_META[status].label} />}
+        label={t("Uptime")}
+        value={<TextSwap text={online ? formatDuration(uptime) : t(STATUS_META[status].label)} />}
         detail={uptimeDetail}
         detailTone={!online && status !== "offline" ? "warning" : undefined}
       />
@@ -84,10 +85,10 @@ function Stat({
 }) {
   return (
     <div className="min-w-0 bg-background px-4 py-3.5">
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dt className="text-[11px] text-muted-foreground">{t(label)}</dt>
       <dd className="mt-1 truncate text-2xl font-medium tracking-tight tabular-nums">{value}</dd>
       <dd className={cn("mt-1 truncate font-mono text-[11px] whitespace-pre", detailTone === "warning" ? "text-warning" : "text-muted-foreground")}>
-        {detail}
+        {t(detail)}
       </dd>
     </div>
   )

@@ -11,6 +11,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 type Confirm = "stop" | "restart" | null
 
@@ -35,13 +36,13 @@ export function ServerControls() {
 
   return (
     <>
-      <div className="flex items-center gap-1 rounded-xl border border-border/70 p-0.5" role="group" aria-label="Server controls">
-        <ControlTooltip label="Start server">
+      <div className="flex items-center gap-1 rounded-xl border border-border/70 p-0.5" role="group" aria-label={t("Server controls")}>
+        <ControlTooltip label={t("Start server")}>
           <button
             type="button"
             onClick={start}
             disabled={!offline}
-            aria-label="Start server"
+            aria-label={t("Start server")}
             className={cn(CONTROL, offline ? "bg-primary text-primary-foreground hover:bg-primary/85" : "text-muted-foreground")}
           >
             <IconSwap
@@ -49,15 +50,15 @@ export function ServerControls() {
               first={<HugeiconsIcon icon={PlayIcon} strokeWidth={1.75} className="size-3.5" />}
               second={<Spinner spinning={status === "starting"} />}
             />
-            <span className="hidden sm:inline">Start</span>
+            <span className="hidden sm:inline">{t("Start")}</span>
           </button>
         </ControlTooltip>
-        <ControlTooltip label="Restart server">
+        <ControlTooltip label={t("Restart server")}>
           <button
             type="button"
             onClick={() => setConfirm("restart")}
             disabled={!online}
-            aria-label="Restart server"
+            aria-label={t("Restart server")}
             className={cn(CONTROL, "text-foreground/90 hover:bg-muted")}
           >
             <IconSwap
@@ -65,15 +66,15 @@ export function ServerControls() {
               first={<HugeiconsIcon icon={RefreshIcon} strokeWidth={1.75} className="size-3.5" />}
               second={<Spinner spinning={status === "restarting"} />}
             />
-            <span className="hidden sm:inline">Restart</span>
+            <span className="hidden sm:inline">{t("Restart")}</span>
           </button>
         </ControlTooltip>
-        <ControlTooltip label="Stop server">
+        <ControlTooltip label={t("Stop server")}>
           <button
             type="button"
             onClick={() => setConfirm("stop")}
             disabled={!online}
-            aria-label="Stop server"
+            aria-label={t("Stop server")}
             className={cn(CONTROL, "text-destructive hover:bg-destructive/10")}
           >
             <IconSwap
@@ -81,7 +82,7 @@ export function ServerControls() {
               first={<HugeiconsIcon icon={StopIcon} strokeWidth={1.75} className="size-3.5" />}
               second={<Spinner spinning={status === "stopping"} />}
             />
-            <span className="hidden sm:inline">Stop</span>
+            <span className="hidden sm:inline">{t("Stop")}</span>
           </button>
         </ControlTooltip>
       </div>
@@ -94,14 +95,14 @@ export function ServerControls() {
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               {confirm === "stop"
-                ? `${players} players will be disconnected. The server stays offline until you start it again.`
-                : `${players} players get a shutdown notice, then the server restarts. This usually takes under a minute.`}
+                ? t(`${players} players will be disconnected. The server stays offline until you start it again.`)
+                : t(`${players} players get a shutdown notice, then the server restarts. This usually takes under a minute.`)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus={confirm === "stop"} className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -112,7 +113,7 @@ export function ServerControls() {
                 confirm === "stop" && "bg-destructive text-white hover:bg-destructive/85 dark:text-white",
               )}
             >
-              {confirm === "stop" ? "Stop server" : "Restart"}
+              {confirm === "stop" ? t("Stop server") : t("Restart")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -125,7 +126,7 @@ function ControlTooltip({ label, children }: { label: string; children: ReactEle
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{t(label)}</TooltipContent>
     </Tooltip>
   )
 }

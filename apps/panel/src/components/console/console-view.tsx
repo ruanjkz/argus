@@ -7,6 +7,7 @@ import { ArrowDown01Icon } from "@hugeicons/core-free-icons"
 
 import { parseAnsi, type AnsiTone, type ConsoleKind, type ConsoleLine } from "@/lib/console-data"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const USER_INTENT_WINDOW = 400
 
@@ -142,7 +143,7 @@ export function ConsoleView({
         onPointerDown={markIntent}
         onKeyDown={markIntent}
         role="log"
-        aria-label="Server console"
+        aria-label={t("Server console")}
         aria-live="off"
         tabIndex={0}
         className="h-full overflow-y-auto py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"

@@ -11,6 +11,7 @@ import { lineTotals, REPOSITORY } from "@/lib/deploys"
 import { formatAgo } from "@/lib/mock"
 import { useIsDesktop } from "@/lib/use-is-desktop"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { DeployDetail } from "./deploy-detail"
 import { BranchPicker } from "./branch-picker"
@@ -74,7 +75,7 @@ export function DeploysPage() {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <header className="border-b border-border/70 px-5 py-3">
-          <h1 className="truncate text-sm font-semibold">Deploys</h1>
+          <h1 className="truncate text-sm font-semibold">{t("Deploys")}</h1>
           <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">no repository connected</p>
         </header>
         <div className="min-h-0 flex-1">
@@ -88,7 +89,7 @@ export function DeploysPage() {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-3">
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold">Deploys</h1>
+          <h1 className="truncate text-sm font-semibold">{t("Deploys")}</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
             {`${connection.sshUrl}  ${branch}  live ${liveDeploy?.commit ?? "none"}`}
           </p>
@@ -111,7 +112,7 @@ export function DeploysPage() {
               first={<HugeiconsIcon icon={RefreshIcon} strokeWidth={1.75} className="size-3.5" />}
               second={<HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className={cn("size-3.5", building && "animate-spin motion-reduce:animate-none")} />}
             />
-            {building ? "Building" : "Check for updates"}
+            {building ? "Building" : t("Check for updates")}
           </button>
         </div>
       </header>
@@ -132,7 +133,7 @@ export function DeploysPage() {
           </div>
           <DriftPanel />
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <ul ref={listRef} onKeyDown={handleKeyDown} className="divide-y divide-border/50" aria-label="Deploys">
+            <ul ref={listRef} onKeyDown={handleKeyDown} className="divide-y divide-border/50" aria-label={t("Deploys")}>
               {deploys.map((deploy, index) => (
                 <DeployRow
                   key={deploy.id}

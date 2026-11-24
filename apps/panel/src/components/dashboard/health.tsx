@@ -4,6 +4,7 @@ import { useLiveServer } from "@/components/live-server"
 import { StatusBadge } from "@/components/status-badge"
 import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { Panel } from "./panel"
 
@@ -14,16 +15,16 @@ export function Health() {
 
   return (
     <Panel
-      title="Health"
-      meta="heartbeat every 3s over fd3 and http"
-      action={<StatusBadge status={status} onlineLabel="Healthy" className="h-6 text-[11px]" />}
+      title={t("Health")}
+      meta={t("heartbeat every 3s over fd3 and http")}
+      action={<StatusBadge status={status} onlineLabel={t("Healthy")} className="h-6 text-[11px]" />}
     >
       {!measured ? (
         <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-y-2 text-xs">
-          <dt className="text-muted-foreground">Heartbeat</dt>
-          <dd className="font-mono">{online ? "arriving from the argus resource" : status === "offline" ? "server is offline" : "waiting for the server"}</dd>
-          <dt className="text-muted-foreground">Watchdog</dt>
-          <dd>Restarts the server when the heartbeat stops.</dd>
+          <dt className="text-muted-foreground">{t("Heartbeat")}</dt>
+          <dd className="font-mono">{online ? t("arriving from the argus resource") : status === "offline" ? t("server is offline") : t("waiting for the server")}</dd>
+          <dt className="text-muted-foreground">{t("Watchdog")}</dt>
+          <dd>{t("Restarts the server when the heartbeat stops.")}</dd>
         </dl>
       ) : (
         <>

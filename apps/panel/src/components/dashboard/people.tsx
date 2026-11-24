@@ -8,6 +8,7 @@ import { useLiveServer } from "@/components/live-server"
 import { usePlayers } from "@/components/players-store"
 import { formatAgo, formatDuration } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { Panel } from "./panel"
 
@@ -18,11 +19,11 @@ export function OnlinePlayers() {
   const { online } = usePlayers()
   const rows = online.slice(0, VISIBLE_PLAYERS)
   const emptyText =
-    status === "offline" ? "The server is offline. Start it from the header." : status === "online" ? "Nobody is online." : "No players until the server is back online."
+    status === "offline" ? t("The server is offline. Start it from the header.") : status === "online" ? t("Nobody is online.") : t("No players until the server is back online.")
 
   return (
     <Panel
-      title="Online players"
+      title={t("Online players")}
       meta={`${players} connected`}
       action={
         <Link
@@ -43,9 +44,9 @@ export function OnlinePlayers() {
             <thead>
               <tr className="border-y border-border/70 bg-muted/60 text-muted-foreground">
                 <th scope="col" className="w-14 px-4 py-1.5 text-left font-normal">ID</th>
-                <th scope="col" className="px-2 py-1.5 text-left font-normal">Name</th>
-                <th scope="col" className="px-2 py-1.5 text-right font-normal">Ping</th>
-                <th scope="col" className="px-4 py-1.5 text-right font-normal">Online</th>
+                <th scope="col" className="px-2 py-1.5 text-left font-normal">{t("Name")}</th>
+                <th scope="col" className="px-2 py-1.5 text-right font-normal">{t("Ping")}</th>
+                <th scope="col" className="px-4 py-1.5 text-right font-normal">{t("Online")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/70 font-mono tabular-nums">
@@ -68,7 +69,7 @@ export function OnlinePlayers() {
 export function RecentActions() {
   const { actions } = useLiveServer()
   return (
-    <Panel title="Recent actions" meta="admins and automations" bodyClassName="px-2 pb-2">
+    <Panel title={t("Recent actions")} meta={t("admins and automations")} bodyClassName="px-2 pb-2">
       <ul className="flex flex-col">
         {actions.map((action) => (
           <li key={action.id} className="flex items-baseline gap-3 rounded-xl px-2 py-2 text-[13px]">

@@ -5,6 +5,7 @@ import { useMemo } from "react"
 import { EChartsLineChart, type ChartConfig } from "@/components/evilcharts/charts/echarts-line-chart"
 import { useLiveServer } from "@/components/live-server"
 import { PLAYERS_BY_HOUR } from "@/lib/mock"
+import { t } from "@/lib/i18n"
 
 import { Panel } from "./panel"
 
@@ -21,14 +22,14 @@ export function PlayersChart() {
   const { live, players } = useLiveServer()
   if (live) {
     return (
-      <Panel title="Players" meta={`${players} online now`}>
-        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">Argus starts drawing player history after the server has been online for an hour.</p>
+      <Panel title={t("Players")} meta={`${players} online now`}>
+        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">{t("Argus starts drawing player history after the server has been online for an hour.")}</p>
       </Panel>
     )
   }
   return (
-    <Panel title="Players" meta="today vs yesterday, hourly">
-      <EChartsLineChart data={PLAYERS_BY_HOUR} config={PLAYERS_CONFIG} xDataKey="hour" curveType="monotone" animation={false} className="h-52">
+    <Panel title={t("Players")} meta={t("today vs yesterday, hourly")}>
+      <EChartsLineChart data={PLAYERS_BY_HOUR} config={{ baseline: { ...PLAYERS_CONFIG.baseline, label: t("Yesterday") }, current: { ...PLAYERS_CONFIG.current, label: t("Today") } }} xDataKey="hour" curveType="monotone" animation={false} className="h-52">
         <EChartsLineChart.Grid />
         <EChartsLineChart.XAxis tickFormatter={(value) => value.slice(0, 2)} />
         <EChartsLineChart.YAxis tickFormatter={(value) => String(Math.round(value))} />
@@ -55,15 +56,15 @@ export function TickChart() {
 
   if (!measured) {
     return (
-      <Panel title="Tick time" meta="not measured yet">
-        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">Tick time needs the profiler hook in the argus resource. It is not wired up yet.</p>
+      <Panel title={t("Tick time")} meta={t("not measured yet")}>
+        <p className="grid h-52 place-items-center px-6 text-center text-xs text-pretty text-muted-foreground">{t("Tick time needs the profiler hook in the argus resource. It is not wired up yet.")}</p>
       </Panel>
     )
   }
 
   return (
     <Panel
-      title="Tick time"
+      title={t("Tick time")}
       meta={`last 2 min  avg ${tickAvg.toFixed(1)} ms`}
       action={peak > 50 ? <span className="font-mono text-[11px] text-warning tabular-nums">peak {peak.toFixed(0)} ms</span> : null}
     >

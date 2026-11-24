@@ -4,6 +4,7 @@ import Script from "next/script"
 
 import { AppShell } from "@/components/shell/app-shell"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { I18nProvider } from "@/lib/i18n"
 import { THEME_SCRIPT } from "@/lib/theme-script"
 import { cn } from "@/lib/utils"
 
@@ -22,9 +23,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" suppressHydrationWarning className={cn("dark antialiased", plexSans.variable, plexMono.variable)}>
       <body>
         <Script id="theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-        <TooltipProvider delayDuration={400}>
-          <AppShell>{children}</AppShell>
-        </TooltipProvider>
+        <I18nProvider>
+          <TooltipProvider delayDuration={400}>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
+        </I18nProvider>
       </body>
     </html>
   )

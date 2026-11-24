@@ -16,6 +16,7 @@ import { IconSwap } from "@/components/motion-primitives"
 import { formatAgo } from "@/lib/mock"
 import { shortIdentifier, type HistoryEntry, type HistoryType, type Identifier } from "@/lib/players"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const HISTORY_META: Record<HistoryType, { icon: IconSvgElement; verb: string; tone: string }> = {
   warn: { icon: Alert02Icon, verb: "warned", tone: "text-warning" },
@@ -59,10 +60,10 @@ export const ACTION_BUTTON =
 
 export function Section({ title, meta, children }: { title: string; meta?: string; children: ReactNode }) {
   return (
-    <section aria-label={title}>
+    <section aria-label={t(title)}>
       <div className="mb-1.5 flex items-baseline justify-between gap-3 px-2">
-        <h3 className="text-xs font-medium">{title}</h3>
-        {meta ? <span className="font-mono text-[11px] whitespace-pre text-muted-foreground">{meta}</span> : null}
+        <h3 className="text-xs font-medium">{t(title)}</h3>
+        {meta ? <span className="font-mono text-[11px] whitespace-pre text-muted-foreground">{t(meta)}</span> : null}
       </div>
       {children}
     </section>
@@ -124,7 +125,7 @@ export function DetailRows({ rows }: { rows: [string, ReactNode][] }) {
     <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 px-2 text-xs">
       {rows.map(([label, value]) => (
         <div key={label} className="contents">
-          <dt className="text-muted-foreground">{label}</dt>
+          <dt className="text-muted-foreground">{t(label)}</dt>
           <dd className="min-w-0 truncate text-right font-mono text-[12px] text-foreground/90 tabular-nums">{value}</dd>
         </div>
       ))}

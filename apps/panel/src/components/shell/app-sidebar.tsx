@@ -35,6 +35,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ServerName } from "@/components/settings-store"
 import { SERVER } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
+
+import { LanguageSelect } from "@/components/language-select"
 
 import { ThemeToggle } from "./theme-toggle"
 import { UserMenu } from "./user-menu"
@@ -63,7 +66,7 @@ function isActivePath(pathname: string, href: string) {
 
 export function AppSidebar({ onToggle, onNavigate }: { onToggle?: () => void; onNavigate?: () => void }) {
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col gap-1.5 p-2 md:pr-0" aria-label="Server">
+    <aside className="flex h-full min-h-0 w-full flex-col gap-1.5 p-2 md:pr-0" aria-label={t("Server")}>
       <div className="flex items-center gap-1 pr-1">
         <ServerSwitcher />
         {onToggle ? <SidebarToggle onToggle={onToggle} /> : null}
@@ -73,7 +76,10 @@ export function AppSidebar({ onToggle, onNavigate }: { onToggle?: () => void; on
         <UserMenu />
       </div>
       <div className="flex items-center justify-between px-1 pb-0.5">
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <LanguageSelect />
+        </div>
         <span className="font-mono text-[11px] text-muted-foreground/60">v0.1</span>
       </div>
     </aside>
@@ -95,13 +101,13 @@ function ServerSwitcher() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm leading-5 font-medium text-foreground/90"><ServerName /></span>
-            <span className="block truncate font-mono text-[11px] leading-4 text-muted-foreground/80">{agentMode === "live" ? "local agent" : agentMode === "demo" ? "demo" : SERVER.license}</span>
+            <span className="block truncate font-mono text-[11px] leading-4 text-muted-foreground/80">{agentMode === "live" ? t("local agent") : agentMode === "demo" ? "demo" : SERVER.license}</span>
           </span>
           <HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={1.75} className="size-3.5 shrink-0 text-muted-foreground/60" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60 rounded-xl" align="start">
-        <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Servers</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">{t("Servers")}</DropdownMenuLabel>
         <DropdownMenuItem>
           <span className="size-1.5 rounded-full bg-success" />
           <ServerName />
@@ -113,7 +119,7 @@ function ServerSwitcher() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
-          Add server
+          {t("Add server")}
           <DropdownMenuShortcut>Ctrl N</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -125,12 +131,12 @@ function SidebarToggle({ onToggle }: { onToggle: () => void }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" onClick={onToggle} aria-label="Collapse sidebar" aria-keyshortcuts="Control+B" className={ICON_BUTTON}>
+        <button type="button" onClick={onToggle} aria-label={t("Collapse sidebar")} aria-keyshortcuts="Control+B" className={ICON_BUTTON}>
           <HugeiconsIcon icon={SidebarLeft01Icon} strokeWidth={1.75} className="size-4" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="right">
-        Collapse sidebar
+        {t("Collapse sidebar")}
         <Kbd>Ctrl B</Kbd>
       </TooltipContent>
     </Tooltip>
@@ -141,7 +147,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { players } = useLiveServer()
   return (
-    <nav aria-label="Main" className="mt-1">
+    <nav aria-label={t("Main")} className="mt-1">
       <ul className="flex flex-col gap-0.5">
         {NAV_ENTRIES.map((entry) => {
           const active = isActivePath(pathname, entry.href)
@@ -149,7 +155,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
             <li key={entry.href}>
               <Link href={entry.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn(ROW, active && "bg-muted text-foreground")}>
                 <HugeiconsIcon icon={entry.icon} strokeWidth={1.75} className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>
+                <span className="min-w-0 flex-1 truncate text-left">{t(entry.label)}</span>
                 {entry.href === "/players" ? (
                   <span className="font-mono text-[11px] text-muted-foreground/70">
                     <AnimatedNumber value={players} />
@@ -167,11 +173,11 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 export function SidebarRail({ onToggle }: { onToggle: () => void }) {
   const pathname = usePathname()
   return (
-    <nav aria-label="Main" className="flex h-full w-12 shrink-0 flex-col items-center gap-1 py-2">
+    <nav aria-label={t("Main")} className="flex h-full w-12 shrink-0 flex-col items-center gap-1 py-2">
       <span className="mb-1 grid size-8 place-items-center rounded-lg bg-background">
         <ArgusMark id="rail" />
       </span>
-      <RailButton label="Expand sidebar" shortcut="Ctrl B" keyshortcuts="Control+B" onClick={onToggle}>
+      <RailButton label={t("Expand sidebar")} shortcut="Ctrl B" keyshortcuts="Control+B" onClick={onToggle}>
         <HugeiconsIcon icon={SidebarLeft01Icon} strokeWidth={1.75} className="size-4" />
       </RailButton>
       <div className="my-1 h-px w-6 bg-border" />
@@ -182,14 +188,14 @@ export function SidebarRail({ onToggle }: { onToggle: () => void }) {
             <TooltipTrigger asChild>
               <Link
                 href={entry.href}
-                aria-label={entry.label}
+                aria-label={t(entry.label)}
                 aria-current={active ? "page" : undefined}
                 className={cn(ICON_BUTTON, active && "bg-muted text-foreground")}
               >
                 <HugeiconsIcon icon={entry.icon} strokeWidth={1.75} className="size-4" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">{entry.label}</TooltipContent>
+            <TooltipContent side="right">{t(entry.label)}</TooltipContent>
           </Tooltip>
         )
       })}

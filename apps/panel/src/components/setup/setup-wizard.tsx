@@ -6,8 +6,10 @@ import { Alert02Icon, Folder01Icon, Loading03Icon, Tick02Icon } from "@hugeicons
 
 import { agentCall } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
+import { LanguageSelect } from "@/components/language-select"
 import { MIN_PASSWORD, OwnerFields, passwordHint } from "@/components/auth/auth-screens"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 type Candidate = { dataFolder: string; name: string; executable: string | null }
 
@@ -109,7 +111,7 @@ export function SetupWizard() {
       }
     } catch (failure) {
       setPhase("failed")
-      setError(failure instanceof Error ? failure.message : "Setup failed")
+      setError(failure instanceof Error ? failure.message : t("Setup failed"))
     }
   }
 
@@ -121,21 +123,22 @@ export function SetupWizard() {
             <ArgusMark id="setup" />
           </span>
           <span className="text-sm font-medium">Argus</span>
+          <LanguageSelect className="ml-auto" />
         </div>
-        <h1 className="mt-6 text-xl font-semibold tracking-tight">Set up your server</h1>
+        <h1 className="mt-6 text-xl font-semibold tracking-tight">{t("Set up your server")}</h1>
         <p className="mt-1 text-sm text-pretty text-muted-foreground">
-          Pick the server Argus should manage. Nothing changes until you click Install, and your server is not touched before that.
+          {t("Pick the server Argus should manage. Nothing changes until you click Install, and your server is not touched before that.")}
         </p>
 
         <fieldset className="mt-7">
-          <legend className="text-sm font-medium">1. Your server</legend>
+          <legend className="text-sm font-medium">{t("1. Your server")}</legend>
           {info === null ? (
             <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground" role="status">
               <HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className="size-4 animate-spin motion-reduce:animate-none" />
-              Looking for servers on this machine
+              {t("Looking for servers on this machine")}
             </p>
           ) : info.candidates.length ? (
-            <div className="mt-3 flex flex-col gap-1.5" role="radiogroup" aria-label="Servers found on this machine">
+            <div className="mt-3 flex flex-col gap-1.5" role="radiogroup" aria-label={t("Servers found on this machine")}>
               {info.candidates.map((candidate) => {
                 const selected = candidate.dataFolder === dataFolder
                 return (
@@ -165,11 +168,11 @@ export function SetupWizard() {
               })}
             </div>
           ) : (
-            <p className="mt-3 text-xs text-muted-foreground">No server found automatically. Paste the folder below.</p>
+            <p className="mt-3 text-xs text-muted-foreground">{t("No server found automatically. Paste the folder below.")}</p>
           )}
 
           <label htmlFor="setup-folder" className="mt-4 block text-xs text-muted-foreground">
-            {info?.candidates.length ? "Or paste another server data folder" : "Server data folder, the one with server.cfg and resources"}
+            {info?.candidates.length ? t("Or paste another server data folder") : t("Server data folder, the one with server.cfg and resources")}
           </label>
           <input
             id="setup-folder"
@@ -186,14 +189,14 @@ export function SetupWizard() {
             aria-invalid={check?.dataFolder.ok === false}
             className={cn(INPUT, "mt-1.5")}
           />
-          <FieldNote result={dataFolder.trim() ? (check?.dataFolder ?? null) : null} okText="Found server.cfg and resources" />
+          <FieldNote result={dataFolder.trim() ? (check?.dataFolder ?? null) : null} okText={t("Found server.cfg and resources")} />
         </fieldset>
 
         <fieldset className="mt-6" disabled={!folderOk}>
-          <legend className={cn("text-sm font-medium", !folderOk && "text-muted-foreground")}>2. {executableName}</legend>
+          <legend className={cn("text-sm font-medium", !folderOk && "text-muted-foreground")}>{t("2. {name}", { name: executableName })}</legend>
           <input
             id="setup-executable"
-            aria-label={`Path to ${executableName}`}
+            aria-label={t("Path to {name}", { name: executableName })}
             value={executable}
             onChange={(event) => {
               setExecutable(event.target.value)
@@ -201,18 +204,18 @@ export function SetupWizard() {
             }}
             spellCheck={false}
             autoComplete="off"
-            placeholder={folderOk ? `Path to ${executableName}, or the folder that has it` : "Pick your server first"}
+            placeholder={folderOk ? t("Path to {name}, or the folder that has it", { name: executableName }) : t("Pick your server first")}
             aria-invalid={folderOk && check?.executable?.ok === false}
             className={cn(INPUT, "mt-3 disabled:opacity-45")}
           />
-          {folderOk ? <FieldNote result={check?.executable ?? null} okText={executableTouched ? "Found it" : "Found it next to your server"} /> : null}
+          {folderOk ? <FieldNote result={check?.executable ?? null} okText={executableTouched ? t("Found it") : t("Found it next to your server")} /> : null}
         </fieldset>
 
         {folderOk && executableOk ? (
           <fieldset className="mt-6">
-            <legend className="text-sm font-medium">3. Install</legend>
+            <legend className="text-sm font-medium">{t("3. Install")}</legend>
             <label htmlFor="setup-name" className="mt-3 block text-xs text-muted-foreground">
-              Name in the panel
+              {t("Name in the panel")}
             </label>
             <input
               id="setup-name"
@@ -227,8 +230,8 @@ export function SetupWizard() {
             />
             {needsOwner ? (
               <div className="mt-5">
-                <p className="text-sm font-medium">Your owner account</p>
-                <p className="mt-0.5 mb-3 text-xs text-muted-foreground">You sign in with it, and you create the logins for your staff later.</p>
+                <p className="text-sm font-medium">{t("Your owner account")}</p>
+                <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{t("You sign in with it, and you create the logins for your staff later.")}</p>
                 <OwnerFields
                   username={username}
                   password={password}
@@ -240,16 +243,16 @@ export function SetupWizard() {
               </div>
             ) : null}
             <div className="mt-4 rounded-xl bg-muted px-3.5 py-3 text-xs">
-              <p className="font-medium text-foreground/90">Argus will</p>
+              <p className="font-medium text-foreground/90">{t("Argus will")}</p>
               <ul className="mt-1.5 flex flex-col gap-1 text-muted-foreground">
-                <li>copy its small resource to resources/[argus]/argus</li>
-                {check?.willEnsure ? <li>add ensure argus to server.cfg, keeping a copy as server.cfg.before-argus</li> : null}
-                <li>save its settings in your user folder</li>
+                <li>{t("copy its small resource to resources/[argus]/argus")}</li>
+                {check?.willEnsure ? <li>{t("add ensure argus to server.cfg, keeping a copy as server.cfg.before-argus")}</li> : null}
+                <li>{t("save its settings in your user folder")}</li>
               </ul>
             </div>
             <label className="mt-4 flex items-center gap-2.5 text-sm">
               <input type="checkbox" checked={autoStart} onChange={(event) => setAutoStart(event.target.checked)} className="size-4 accent-foreground" />
-              Start the server when I finish
+              {t("Start the server when I finish")}
             </label>
           </fieldset>
         ) : null}
@@ -266,11 +269,11 @@ export function SetupWizard() {
             {phase === "installing" || phase === "starting" ? (
               <HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className="size-4 animate-spin motion-reduce:animate-none" />
             ) : null}
-            {phase === "installing" ? "Installing" : phase === "starting" ? "Opening the panel" : "Install"}
+            {phase === "installing" ? "Installing" : phase === "starting" ? t("Opening the panel") : "Install"}
           </button>
           {!ready && phase === "idle" ? (
             <span className="text-xs text-muted-foreground">
-              {!folderOk ? "Pick your server to continue." : !executableOk ? `Point to ${executableName} to continue.` : "Create your owner account to continue."}
+              {!folderOk ? t("Pick your server to continue.") : !executableOk ? t("Point to {name} to continue.", { name: executableName }) : t("Create your owner account to continue.")}
             </span>
           ) : null}
         </div>

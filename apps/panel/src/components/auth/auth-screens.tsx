@@ -6,7 +6,9 @@ import { Alert02Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 
 import { agentCall, useAgent } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
+import { LanguageSelect } from "@/components/language-select"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const INPUT =
   "h-10 w-full rounded-xl border border-border bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
@@ -18,8 +20,8 @@ export const MIN_PASSWORD = 10
 
 export function passwordHint(password: string, username: string) {
   if (!password) return null
-  if (password.length < MIN_PASSWORD) return `${MIN_PASSWORD - password.length} more characters`
-  if (username && password.toLowerCase().includes(username.toLowerCase())) return "Do not put your username in the password"
+  if (password.length < MIN_PASSWORD) return t("{count} more characters", { count: MIN_PASSWORD - password.length })
+  if (username && password.toLowerCase().includes(username.toLowerCase())) return t("Do not put your username in the password")
   return null
 }
 
@@ -32,6 +34,7 @@ function AuthCard({ title, description, children }: { title: string; description
             <ArgusMark id="auth" />
           </span>
           <span className="text-sm font-medium">Argus</span>
+          <LanguageSelect className="ml-auto" />
         </div>
         <h1 className="mt-6 text-lg font-semibold tracking-tight">{title}</h1>
         <p className="mt-1 text-sm text-pretty text-muted-foreground">{description}</p>
@@ -92,19 +95,19 @@ export function LoginScreen() {
       await agentCall("POST", "session", { username, password })
       refresh()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not sign in")
+      setError(failure instanceof Error ? failure.message : t("Could not sign in"))
       setBusy(false)
     }
   }
 
   return (
-    <AuthCard title="Sign in" description="Use the account your server owner gave you.">
+    <AuthCard title={t("Sign in")} description={t("Use the account your server owner gave you.")}>
       <form onSubmit={submit} className="mt-6 grid gap-4">
-        <Field id="login-username" label="Username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus spellCheck={false} autoCapitalize="none" required />
-        <Field id="login-password" label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+        <Field id="login-username" label={t("Username")} value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus spellCheck={false} autoCapitalize="none" required />
+        <Field id="login-password" label={t("Password")} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
         <ErrorNote message={error} />
-        <SubmitButton busy={busy}>Sign in</SubmitButton>
-        <p className="text-xs text-pretty text-muted-foreground">Forgot it? Ask the server owner to reset your password.</p>
+        <SubmitButton busy={busy}>{t("Sign in")}</SubmitButton>
+        <p className="text-xs text-pretty text-muted-foreground">{t("Forgot it? Ask the server owner to reset your password.")}</p>
       </form>
     </AuthCard>
   )
@@ -129,7 +132,7 @@ export function OwnerScreen() {
       await agentCall("POST", "accounts/owner", { username, password })
       refresh()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not create the account")
+      setError(failure instanceof Error ? failure.message : t("Could not create the account"))
       setBusy(false)
     }
   }
@@ -137,8 +140,8 @@ export function OwnerScreen() {
   if (!canCreateOwner) {
     return (
       <AuthCard
-        title="Argus needs an owner"
-        description="Open Argus on the machine where it runs to create the owner account. For safety this cannot be done from another computer."
+        title={t("Argus needs an owner")}
+        description={t("Open Argus on the machine where it runs to create the owner account. For safety this cannot be done from another computer.")}
       >
         <span />
       </AuthCard>
@@ -146,7 +149,7 @@ export function OwnerScreen() {
   }
 
   return (
-    <AuthCard title="Create the owner account" description="The owner controls everything and creates the logins for the rest of the staff.">
+    <AuthCard title={t("Create the owner account")} description={t("The owner controls everything and creates the logins for the rest of the staff.")}>
       <OwnerFields
         username={username}
         password={password}
@@ -157,7 +160,7 @@ export function OwnerScreen() {
         onSubmit={submit}
         error={error}
         busy={busy}
-        action="Create account"
+        action={t("Create account")}
       />
     </AuthCard>
   )
@@ -192,35 +195,35 @@ export function OwnerFields({
     <>
       <Field
         id="owner-username"
-        label="Username"
+        label={t("Username")}
         value={username}
         onChange={(event) => onUsername(event.target.value.toLowerCase().replace(/\s/g, ""))}
         autoComplete="username"
         spellCheck={false}
         autoCapitalize="none"
         placeholder="ruan"
-        hint="Lowercase letters, numbers, dots, dashes."
+        hint={t("Lowercase letters, numbers, dots, dashes.")}
         required
       />
       <Field
         id="owner-password"
-        label="Password"
+        label={t("Password")}
         type="password"
         value={password}
         onChange={(event) => onPassword(event.target.value)}
         autoComplete="new-password"
-        hint={hint ?? `At least ${MIN_PASSWORD} characters.`}
+        hint={hint ?? t("At least {count} characters.", { count: MIN_PASSWORD })}
         aria-invalid={Boolean(hint)}
         required
       />
       <Field
         id="owner-confirm"
-        label="Repeat the password"
+        label={t("Repeat the password")}
         type="password"
         value={confirm}
         onChange={(event) => onConfirm(event.target.value)}
         autoComplete="new-password"
-        hint={mismatch ? "The passwords do not match" : null}
+        hint={mismatch ? t("The passwords do not match") : null}
         aria-invalid={mismatch}
         required
       />
@@ -255,7 +258,7 @@ export function ChangePasswordForm({ forced, onDone }: { forced: boolean; onDone
       await agentCall("POST", "session/password", { current, next })
       onDone()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not change the password")
+      setError(failure instanceof Error ? failure.message : t("Could not change the password"))
       setBusy(false)
     }
   }
@@ -264,7 +267,7 @@ export function ChangePasswordForm({ forced, onDone }: { forced: boolean; onDone
     <form onSubmit={submit} className={cn("grid gap-4", forced && "mt-6")}>
       <Field
         id="password-current"
-        label={forced ? "Temporary password" : "Current password"}
+        label={forced ? t("Temporary password") : t("Current password")}
         type="password"
         value={current}
         onChange={(event) => setCurrent(event.target.value)}
@@ -274,28 +277,28 @@ export function ChangePasswordForm({ forced, onDone }: { forced: boolean; onDone
       />
       <Field
         id="password-next"
-        label="New password"
+        label={t("New password")}
         type="password"
         value={next}
         onChange={(event) => setNext(event.target.value)}
         autoComplete="new-password"
-        hint={hint ?? `At least ${MIN_PASSWORD} characters.`}
+        hint={hint ?? t("At least {count} characters.", { count: MIN_PASSWORD })}
         aria-invalid={Boolean(hint)}
         required
       />
       <Field
         id="password-confirm"
-        label="Repeat the new password"
+        label={t("Repeat the new password")}
         type="password"
         value={confirm}
         onChange={(event) => setConfirm(event.target.value)}
         autoComplete="new-password"
-        hint={mismatch ? "The passwords do not match" : null}
+        hint={mismatch ? t("The passwords do not match") : null}
         aria-invalid={mismatch}
         required
       />
       <ErrorNote message={error} />
-      <SubmitButton busy={busy}>Save new password</SubmitButton>
+      <SubmitButton busy={busy}>{t("Save new password")}</SubmitButton>
     </form>
   )
 }
@@ -304,8 +307,8 @@ export function PasswordScreen() {
   const { account, refresh, signOut } = useAgent()
   return (
     <AuthCard
-      title="Pick your own password"
-      description={`Welcome${account ? `, ${account.username}` : ""}. You signed in with a temporary password. Choose a new one to continue.`}
+      title={t("Pick your own password")}
+      description={t("Welcome{name}. You signed in with a temporary password. Choose a new one to continue.", { name: account ? `, ${account.username}` : "" })}
     >
       <ChangePasswordForm forced onDone={refresh} />
       <button
@@ -313,7 +316,7 @@ export function PasswordScreen() {
         onClick={() => void signOut()}
         className="press mt-3 h-9 w-full rounded-xl text-xs text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
-        Sign out
+        {t("Sign out")}
       </button>
     </AuthCard>
   )

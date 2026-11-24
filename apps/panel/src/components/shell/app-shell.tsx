@@ -16,6 +16,7 @@ import { ServerName, SettingsProvider } from "@/components/settings-store"
 import { SetupWizard } from "@/components/setup/setup-wizard"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { AgentBanner } from "./agent-banner"
 import { AppSidebar, SidebarRail } from "./app-sidebar"
@@ -63,14 +64,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  aria-label="Open navigation"
+                  aria-label={t("Open navigation")}
                   className="press grid size-9 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <HugeiconsIcon icon={Menu01Icon} strokeWidth={1.75} className="size-4" />
                 </button>
               </SheetTrigger>
               <SheetContent side="left" showCloseButton={false} className="w-80 bg-panel p-0">
-                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <SheetTitle className="sr-only">{t("Navigation")}</SheetTitle>
                 <AppSidebar onNavigate={() => setMobileOpen(false)} />
               </SheetContent>
             </Sheet>

@@ -12,6 +12,7 @@ import { BRANCHES } from "@/lib/deploys"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { DEPLOY_PUBLIC_KEY, FAILURE_COPY, hostName, parseRemote, type ConnectionFailure, type Remote } from "@/lib/repository"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 type Step = 1 | 2 | 3
 
@@ -108,22 +109,22 @@ export function ConnectWizard() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-xl px-5 py-10">
-        <h2 className="text-base font-semibold">Connect your repository</h2>
+        <h2 className="text-base font-semibold">{t("Connect your repository")}</h2>
         <p className="mt-1 text-xs text-pretty text-muted-foreground">
-          Three steps, about two minutes. Argus gets read access to this one repository and nothing else. No account login, no token.
+          {t("Three steps, about two minutes. Argus gets read access to this one repository and nothing else. No account login, no token.")}
         </p>
 
         <ol className="mt-8 flex flex-col gap-3">
           <StepCard
             number={1}
             current={step}
-            title="Paste the repository link"
+            title={t("Paste the repository link")}
             summary={remote ? `${remote.owner}/${remote.name} on ${host}` : ""}
             onEdit={() => setStep(1)}
           >
             <form onSubmit={submitUrl} className="grid gap-2">
               <label htmlFor="connect-url" className="sr-only">
-                Repository link
+                {t("Repository link")}
               </label>
               <input
                 id="connect-url"
@@ -149,23 +150,23 @@ export function ConnectWizard() {
               </p>
               <div>
                 <button type="submit" disabled={!remote} className={PRIMARY}>
-                  Continue
+                  {t("Continue")}
                 </button>
               </div>
             </form>
           </StepCard>
 
-          <StepCard number={2} current={step} title={`Add this key on ${host}`} summary="Key added" onEdit={() => setStep(2)}>
+          <StepCard number={2} current={step} title={t("Add this key on {host}", { host })} summary={t("Key added")} onEdit={() => setStep(2)}>
             {remote ? (
               keyError ? (
                 <div role="alert" className="rounded-xl bg-destructive/10 px-3 py-2.5 text-xs">
-                  <p className="font-medium text-destructive">Argus could not create the key</p>
+                  <p className="font-medium text-destructive">{t("Argus could not create the key")}</p>
                   <p className="mt-1 text-foreground/90">{keyError}. Run argus doctor to see what is missing.</p>
                 </div>
               ) : live && !key ? (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
                   <HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className="size-4 animate-spin motion-reduce:animate-none" />
-                  Creating a key on this machine
+                  {t("Creating a key on this machine")}
                 </p>
               ) : (
                 <KeyStep
@@ -181,11 +182,11 @@ export function ConnectWizard() {
             ) : null}
           </StepCard>
 
-          <StepCard number={3} current={step} title="Test the connection" summary="">
+          <StepCard number={3} current={step} title={t("Test the connection")} summary="">
             {test.phase === "testing" ? (
               <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
                 <HugeiconsIcon icon={Loading03Icon} strokeWidth={1.75} className="size-4 animate-spin motion-reduce:animate-none" />
-                Asking {host} for the branches
+                {t("Asking {host} for the branches", { host })}
               </p>
             ) : null}
             {test.phase === "failed" ? (
@@ -196,10 +197,10 @@ export function ConnectWizard() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => setStep(test.failure === "repository-not-found" ? 1 : 2)} className={PRIMARY}>
-                    {test.failure === "repository-not-found" ? "Check the link" : "Back to the key"}
+                    {test.failure === "repository-not-found" ? t("Check the link") : t("Back to the key")}
                   </button>
                   <button type="button" onClick={runTest} className={SECONDARY}>
-                    Test again
+                    {t("Test again")}
                   </button>
                 </div>
               </div>
@@ -211,7 +212,7 @@ export function ConnectWizard() {
                   {`Connected. Found ${test.branches.length} ${test.branches.length === 1 ? "branch" : "branches"}.`}
                 </p>
                 <p id="connect-branch" className="mt-4 text-xs font-medium text-foreground/90">
-                  Which branch runs on this server?
+                  {t("Which branch runs on this server?")}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-labelledby="connect-branch">
                   {test.branches.map((name) => (
@@ -232,9 +233,9 @@ export function ConnectWizard() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">You can switch branches later on the Deploys page.</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("You can switch branches later on the Deploys page.")}</p>
                 <button type="button" onClick={() => connect(remote, branch)} className={cn(PRIMARY, "mt-4")}>
-                  Finish
+                  {t("Finish")}
                 </button>
               </div>
             ) : null}
@@ -290,7 +291,7 @@ function StepCard({
             onClick={onEdit}
             className="press h-7 shrink-0 rounded-lg px-2 text-xs text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Change
+            {t("Change")}
           </button>
         ) : null}
       </div>
@@ -330,7 +331,7 @@ function KeyStep({
             first={<HugeiconsIcon icon={Copy01Icon} strokeWidth={1.75} className="size-3.5" />}
             second={<HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="size-3.5" />}
           />
-          {copied ? "Copied" : "Copy the key"}
+          {copied ? "Copied" : t("Copy the key")}
         </button>
       </div>
 
@@ -339,11 +340,11 @@ function KeyStep({
           Open the deploy keys page of the repository.
           {remote.deployKeysUrl ? (
             <a href={remote.deployKeysUrl} target="_blank" rel="noreferrer" className={cn(SECONDARY, "mt-2 w-fit")}>
-              Open {host}
+              {t("Open {host}", { host })}
               <HugeiconsIcon icon={ArrowUpRight01Icon} strokeWidth={1.75} className="size-3.5" />
             </a>
           ) : (
-            <span className="mt-1 block text-muted-foreground">On most hosts it is under Settings, then Deploy keys.</span>
+            <span className="mt-1 block text-muted-foreground">{t("On most hosts it is under Settings, then Deploy keys.")}</span>
           )}
         </Instruction>
         <Instruction index="b">
@@ -356,7 +357,7 @@ function KeyStep({
       </ol>
 
       <button type="button" onClick={onDone} className={cn(PRIMARY, "mt-4")}>
-        I added the key, test it
+        {t("I added the key, test it")}
       </button>
     </div>
   )

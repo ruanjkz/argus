@@ -16,6 +16,7 @@ import { lineTotals, STEP_LABEL, type DeployStep, type ResourceChange } from "@/
 import { formatAgo } from "@/lib/mock"
 import { nextRestartTime } from "@/lib/settings"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { DEPLOY_STATUS } from "./deploy-status"
 
@@ -57,7 +58,7 @@ export function DeployDetail({ deploy }: { deploy: DeployView }) {
                 </button>
                 <button type="button" onClick={() => cancel(deploy.id)} disabled={applying} className={cn(ACTION_BUTTON, "hover:bg-muted")}>
                   <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.75} className="size-3.5" />
-                  Cancel
+                  {t("Cancel")}
                 </button>
               </>
             ) : (
@@ -142,7 +143,7 @@ export function DeployDetail({ deploy }: { deploy: DeployView }) {
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button

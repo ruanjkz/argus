@@ -31,6 +31,7 @@ import {
 } from "@/lib/settings"
 import { RESOURCE_CATALOG } from "@/lib/resources"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { RemoteSettings } from "./remote-settings"
 import { RepositorySettings } from "./repository-settings"
@@ -72,7 +73,7 @@ export function SettingsPage() {
     save()
       .then(() => {
         live.logAction(`updated ${count === 1 ? "a setting" : `${count} settings`}`)
-        setSavedNote(needsStart ? "Saved. Launch and startup changes apply the next time the server starts." : "Saved.")
+        setSavedNote(needsStart ? t("Saved. Launch and startup changes apply the next time the server starts.") : "Saved.")
       })
       .catch(() => setSavedNote("Could not save. Is the Argus agent running?"))
   }
@@ -93,19 +94,19 @@ export function SettingsPage() {
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <header className="border-b border-border/70 px-5 py-3">
-        <h1 className="truncate text-sm font-semibold">Settings</h1>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">Saved on this machine. Only this Argus install reads them.</p>
+        <h1 className="truncate text-sm font-semibold">{t("Settings")}</h1>
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{t("Saved on this machine. Only this Argus install reads them.")}</p>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Settings sections" className="hidden w-52 shrink-0 border-r border-border/70 p-2 lg:block">
+        <nav aria-label={t("Settings sections")} className="hidden w-52 shrink-0 border-r border-border/70 p-2 lg:block">
           <ul className="flex flex-col gap-0.5">
             <li>
               <a
                 href="#section-team"
                 className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Team
+                {t("Team")}
               </a>
             </li>
             <li>
@@ -113,7 +114,7 @@ export function SettingsPage() {
                 href="#section-remote"
                 className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Remote access
+                {t("Remote access")}
               </a>
             </li>
             <li>
@@ -121,7 +122,7 @@ export function SettingsPage() {
                 href="#section-repository"
                 className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Repository
+                {t("Repository")}
               </a>
             </li>
             {SECTIONS.map((section) => (
@@ -130,8 +131,8 @@ export function SettingsPage() {
                   href={`#section-${section.id}`}
                   className="flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="flex-1">{section.label}</span>
-                  {changedSections.has(section.id) ? <span className="size-1.5 rounded-full bg-warning" aria-label="Unsaved changes" /> : null}
+                  <span className="flex-1">{t(section.label)}</span>
+                  {changedSections.has(section.id) ? <span className="size-1.5 rounded-full bg-warning" aria-label={t("Unsaved changes")} /> : null}
                 </a>
               </li>
             ))}
@@ -147,7 +148,7 @@ export function SettingsPage() {
             <RepositorySettings />
 
             <SettingsSection id="server">
-              <TextField label="Server name" hint="Shown in the sidebar and the console log file name." {...field("name")}>
+              <TextField label={t("Server name")} hint={t("Shown in the sidebar and the console log file name.")} {...field("name")}>
                 <input
                   id="setting-name"
                   value={draft.name}
@@ -157,7 +158,7 @@ export function SettingsPage() {
                   className={INPUT}
                 />
               </TextField>
-              <TextField label="FXServer executable" hint="FXServer.exe on Windows, run.sh on Linux." {...field("executable")}>
+              <TextField label={t("FXServer executable")} hint={t("FXServer.exe on Windows, run.sh on Linux.")} {...field("executable")}>
                 <input
                   id="setting-executable"
                   value={draft.executable}
@@ -168,7 +169,7 @@ export function SettingsPage() {
                 />
               </TextField>
               <div className="grid gap-5 sm:grid-cols-[1fr_10rem]">
-                <TextField label="Server data folder" hint="The folder with server.cfg and resources." {...field("dataFolder")}>
+                <TextField label={t("Server data folder")} hint={t("The folder with server.cfg and resources.")} {...field("dataFolder")}>
                   <input
                     id="setting-dataFolder"
                     value={draft.dataFolder}
@@ -178,7 +179,7 @@ export function SettingsPage() {
                     className={MONO_INPUT}
                   />
                 </TextField>
-                <TextField label="Config file" {...field("configFile")}>
+                <TextField label={t("Config file")} {...field("configFile")}>
                   <input
                     id="setting-configFile"
                     value={draft.configFile}
@@ -189,7 +190,7 @@ export function SettingsPage() {
                   />
                 </TextField>
               </div>
-              <TextField label="Extra launch arguments" hint="Passed to FXServer after +exec. Leave empty if server.cfg already sets them." {...field("launchArgs")}>
+              <TextField label={t("Extra launch arguments")} hint={t("Passed to FXServer after +exec. Leave empty if server.cfg already sets them.")} {...field("launchArgs")}>
                 <input
                   id="setting-launchArgs"
                   value={draft.launchArgs}
@@ -201,8 +202,8 @@ export function SettingsPage() {
               </TextField>
               <SwitchField
                 id="setting-autoStart"
-                label="Start the server with Argus"
-                hint="When Argus opens, it starts FXServer right away."
+                label={t("Start the server with Argus")}
+                hint={t("When Argus opens, it starts FXServer right away.")}
                 checked={draft.autoStart}
                 changed={changed.includes("autoStart")}
                 onChange={(autoStart) => update({ autoStart })}
@@ -216,8 +217,8 @@ export function SettingsPage() {
             <SettingsSection id="restarts">
               <RestartTimes value={draft.restartTimes} changed={changed.includes("restartTimes")} onChange={(restartTimes) => update({ restartTimes })} />
               <div className="grid gap-2">
-                <FieldLabel label="Warn players before" changed={changed.includes("restartWarnings")} />
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Warn players before">
+                <FieldLabel label={t("Warn players before")} changed={changed.includes("restartWarnings")} />
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("Warn players before")}>
                   {WARNING_MINUTES.map((minutes) => {
                     const on = draft.restartWarnings.includes(minutes)
                     return (
@@ -244,8 +245,8 @@ export function SettingsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {draft.restartWarnings.length
-                    ? `Players see a chat warning ${draft.restartWarnings.map((minutes) => `${minutes}`).join(", ")} minutes before each restart.`
-                    : "Players get no warning before a scheduled restart."}
+                    ? t("Players see a chat warning {list} minutes before each restart.", { list: draft.restartWarnings.join(", ") })
+                    : t("Players get no warning before a scheduled restart.")}
                 </p>
               </div>
             </SettingsSection>
@@ -253,8 +254,8 @@ export function SettingsPage() {
             <SettingsSection id="watchdog">
               <SwitchField
                 id="setting-restartOnCrash"
-                label="Restart after a crash or hang"
-                hint="Waits 2 s, then doubles the wait after each failed start, up to 60 s."
+                label={t("Restart after a crash or hang")}
+                hint={t("Waits 2 s, then doubles the wait after each failed start, up to 60 s.")}
                 checked={draft.restartOnCrash}
                 changed={changed.includes("restartOnCrash")}
                 onChange={(restartOnCrash) => update({ restartOnCrash })}
@@ -262,8 +263,8 @@ export function SettingsPage() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <NumberField
                   name="maxFailedStarts"
-                  label="Give up after"
-                  unit="failed starts"
+                  label={t("Give up after")}
+                  unit={t("failed starts")}
                   value={draft.maxFailedStarts}
                   disabled={!draft.restartOnCrash}
                   onChange={(maxFailedStarts) => update({ maxFailedStarts })}
@@ -271,24 +272,24 @@ export function SettingsPage() {
                 />
                 <NumberField
                   name="heartbeatTimeoutSeconds"
-                  label="Hung after no heartbeat for"
-                  unit="seconds"
+                  label={t("Hung after no heartbeat for")}
+                  unit={t("seconds")}
                   value={draft.heartbeatTimeoutSeconds}
                   onChange={(heartbeatTimeoutSeconds) => update({ heartbeatTimeoutSeconds })}
                   {...field("heartbeatTimeoutSeconds")}
                 />
                 <NumberField
                   name="bootTimeoutSeconds"
-                  label="Failed boot after"
-                  unit="seconds"
+                  label={t("Failed boot after")}
+                  unit={t("seconds")}
                   value={draft.bootTimeoutSeconds}
                   onChange={(bootTimeoutSeconds) => update({ bootTimeoutSeconds })}
                   {...field("bootTimeoutSeconds")}
                 />
                 <NumberField
                   name="stopTimeoutSeconds"
-                  label="Force stop after"
-                  unit="seconds"
+                  label={t("Force stop after")}
+                  unit={t("seconds")}
                   value={draft.stopTimeoutSeconds}
                   onChange={(stopTimeoutSeconds) => update({ stopTimeoutSeconds })}
                   {...field("stopTimeoutSeconds")}
@@ -298,8 +299,8 @@ export function SettingsPage() {
 
             <SettingsSection id="bans">
               <div className="grid gap-2">
-                <FieldLabel label="Default length for new bans" changed={changed.includes("defaultBanDuration")} />
-                <div className="flex w-fit items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Default ban length">
+                <FieldLabel label={t("Default length for new bans")} changed={changed.includes("defaultBanDuration")} />
+                <div className="flex w-fit items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Default ban length")}>
                   {BAN_DURATIONS.map((option) => (
                     <button
                       key={option}
@@ -320,8 +321,8 @@ export function SettingsPage() {
                 </div>
               </div>
               <TextField
-                label="Message a banned player sees"
-                hint={`Use ${BAN_MESSAGE_TOKENS.join(", ")} to fill in the ban details.`}
+                label={t("Message a banned player sees")}
+                hint={t("Use {list} to fill in the ban details.", { list: BAN_MESSAGE_TOKENS.join(", ") })}
                 {...field("banMessage")}
               >
                 <textarea
@@ -334,7 +335,7 @@ export function SettingsPage() {
                 />
               </TextField>
               <div className="rounded-xl bg-muted px-3 py-2.5 text-xs">
-                <p className="text-[11px] text-muted-foreground">Preview</p>
+                <p className="text-[11px] text-muted-foreground">{t("Preview")}</p>
                 <p className="mt-1 wrap-break-word text-foreground/90">
                   {renderBanMessage(draft.banMessage.trim() || "…", { reason: "Cheating", expires: "in 7 days", id: "B-4094" })}
                 </p>
@@ -361,9 +362,9 @@ function SettingsSection({ id, children }: { id: SectionId; children: ReactNode 
   return (
     <section id={`section-${id}`} aria-labelledby={`section-${id}-title`} className="scroll-mt-6">
       <h2 id={`section-${id}-title`} className="text-sm font-semibold">
-        {section.label}
+        {t(section.label)}
       </h2>
-      <p className="mt-0.5 text-xs text-muted-foreground">{section.description}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{t(section.description)}</p>
       <div className="mt-4 flex flex-col gap-5">{children}</div>
     </section>
   )
@@ -373,7 +374,7 @@ function FieldLabel({ label, htmlFor, changed }: { label: string; htmlFor?: stri
   return (
     <label htmlFor={htmlFor} className="flex items-center gap-1.5 text-xs font-medium text-foreground/90">
       {label}
-      {changed ? <span className="size-1.5 rounded-full bg-warning" aria-label="Unsaved" /> : null}
+      {changed ? <span className="size-1.5 rounded-full bg-warning" aria-label={t("Unsaved")} /> : null}
     </label>
   )
 }
@@ -451,7 +452,7 @@ function NumberField({
           {error}
         </p>
       ) : (
-        <p id={`${id}-range`} className="font-mono text-[11px] text-muted-foreground">{`${min} to ${max}`}</p>
+        <p id={`${id}-range`} className="font-mono text-[11px] text-muted-foreground">{t("{min} to {max}", { min, max })}</p>
       )}
     </div>
   )
@@ -530,13 +531,13 @@ function StartupList({ value, changed, onChange }: { value: string[]; changed: b
   return (
     <div className="grid gap-3">
       <div className="flex items-baseline justify-between gap-3">
-        <FieldLabel label="Ensure on start" changed={changed} />
-        <span className="font-mono text-[11px] whitespace-pre text-muted-foreground">{`${covered.size} of ${RESOURCE_CATALOG.length} resources`}</span>
+        <FieldLabel label={t("Ensure on start")} changed={changed} />
+        <span className="font-mono text-[11px] whitespace-pre text-muted-foreground">{t("{count} of {total} resources", { count: covered.size, total: RESOURCE_CATALOG.length })}</span>
       </div>
 
       {value.length === 0 ? (
         <p className="rounded-xl bg-muted px-3 py-2.5 text-xs text-muted-foreground">
-          Nothing starts with the server. Add a [folder] or a resource below.
+          {t("Nothing starts with the server. Add a [folder] or a resource below.")}
         </p>
       ) : (
         <ol className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/70">
@@ -600,12 +601,12 @@ function StartupList({ value, changed, onChange }: { value: string[]; changed: b
             spellCheck={false}
             autoComplete="off"
             aria-invalid={Boolean(error)}
-            placeholder="[folder] or resource name"
+            placeholder={t("[folder] or resource name")}
             className={MONO_INPUT}
           />
           <button type="submit" className={cn(SMALL_BUTTON, "h-9 border border-border hover:bg-muted")}>
             <HugeiconsIcon icon={Add01Icon} strokeWidth={1.75} className="size-3.5" />
-            Add
+            {t("Add")}
           </button>
         </div>
         <datalist id={listId}>
@@ -622,14 +623,14 @@ function StartupList({ value, changed, onChange }: { value: string[]; changed: b
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            A [folder] ensures every resource inside it, so new scripts dropped there start too. Order matters: dependencies go first.
+            {t("A [folder] ensures every resource inside it, so new scripts dropped there start too. Order matters: dependencies go first.")}
           </p>
         )}
       </form>
 
       {folderSuggestions.length ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Folders not listed</span>
+          <span className="text-[11px] text-muted-foreground">{t("Folders not listed")}</span>
           {folderSuggestions.map((folder) => (
             <button
               key={folder}
@@ -645,7 +646,7 @@ function StartupList({ value, changed, onChange }: { value: string[]; changed: b
 
       {left.length ? (
         <p className="text-xs text-muted-foreground">
-          <span className="text-warning">{left.length} not started on boot:</span>{" "}
+          <span className="text-warning">{t("{count} not started on boot:", { count: left.length })}</span>{" "}
           <span className="font-mono text-[11px]">{left.map((entry) => entry.name).join(", ")}</span>
         </p>
       ) : null}
@@ -675,7 +676,7 @@ function RestartTimes({ value, changed, onChange }: { value: string[]; changed: 
 
   return (
     <div className="grid gap-2">
-      <FieldLabel label="Restart every day at" htmlFor="setting-restartTimes" changed={changed} />
+      <FieldLabel label={t("Restart every day at")} htmlFor="setting-restartTimes" changed={changed} />
       <div className="flex flex-wrap items-center gap-1.5">
         {value.map((time) => (
           <span key={time} className="inline-flex h-8 items-center gap-1 rounded-lg bg-muted pr-1 pl-2.5 font-mono text-xs tabular-nums">
@@ -706,7 +707,7 @@ function RestartTimes({ value, changed, onChange }: { value: string[]; changed: 
             className={cn(MONO_INPUT, "h-8 w-20 rounded-lg px-2")}
           />
           <button type="submit" disabled={full} className={cn(SMALL_BUTTON, "border border-border hover:bg-muted")}>
-            Add
+            {t("Add")}
           </button>
         </form>
       </div>
@@ -717,10 +718,10 @@ function RestartTimes({ value, changed, onChange }: { value: string[]; changed: 
       ) : (
         <p className="text-xs text-muted-foreground">
           {value.length === 0
-            ? "No scheduled restarts. The server only restarts when you or the watchdog do it."
+            ? t("No scheduled restarts. The server only restarts when you or the watchdog do it.")
             : full
-              ? `Up to ${MAX_RESTART_TIMES} restarts a day.`
-              : "Server time. Argus sends quit and starts FXServer again."}
+              ? t("Up to {count} restarts a day.", { count: MAX_RESTART_TIMES })
+              : t("Server time. Argus sends quit and starts FXServer again.")}
         </p>
       )}
     </div>
@@ -762,22 +763,22 @@ function SaveBar({
           <>
             <p className="min-w-0 truncate text-xs">
               {errorCount ? (
-                <span className="text-destructive">{errorCount === 1 ? "Fix 1 field before saving" : `Fix ${errorCount} fields before saving`}</span>
+                <span className="text-destructive">{errorCount === 1 ? t("Fix 1 field before saving") : t(`Fix ${errorCount} fields before saving`)}</span>
               ) : (
-                <span className="text-foreground/90">{count === 1 ? "1 unsaved change" : `${count} unsaved changes`}</span>
+                <span className="text-foreground/90">{count === 1 ? t("1 unsaved change") : t(`${count} unsaved changes`)}</span>
               )}
             </p>
             <button type="button" onClick={onDiscard} tabIndex={visible ? 0 : -1} className={cn(SMALL_BUTTON, "hover:bg-muted")}>
-              Discard
+              {t("Discard")}
             </button>
             <button type="button" onClick={onSave} tabIndex={visible ? 0 : -1} className={cn(SMALL_BUTTON, "bg-primary text-primary-foreground hover:bg-primary/85")}>
-              Save
+              {t("Save")}
             </button>
           </>
         ) : (
           <>
             <p className="min-w-0 text-xs text-foreground/90">{note}</p>
-            <button type="button" onClick={onDismissNote} tabIndex={visible ? 0 : -1} aria-label="Dismiss" className={ICON_BUTTON}>
+            <button type="button" onClick={onDismissNote} tabIndex={visible ? 0 : -1} aria-label={t("Dismiss")} className={ICON_BUTTON}>
               <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.75} className="size-3.5" />
             </button>
           </>

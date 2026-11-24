@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { stripAnsi, type ConsoleKind, type ConsoleLine } from "@/lib/console-data"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 import { CommandInput } from "./command-input"
 import { ConsoleView } from "./console-view"
@@ -121,13 +122,13 @@ export function ConsolePage() {
   ]
 
   const inputBlockedReason =
-    status === "online" ? undefined : status === "offline" ? "Server is offline" : `Server is ${STATUS_META[status].label.toLowerCase()}`
+    status === "online" ? undefined : status === "offline" ? t("Server is offline") : t(`Server is ${STATUS_META[status].label.toLowerCase()}`)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-start justify-between gap-4 border-b border-border/70 px-5 py-3">
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold">Console</h1>
+          <h1 className="truncate text-sm font-semibold">{t("Console")}</h1>
           <p className="mt-0.5 overflow-hidden font-mono text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
             {`${serverName}  pid ${pid ?? "—"}  ${lines.length.toLocaleString("en-US")} lines  showing ${filtered.length.toLocaleString("en-US")}`}
           </p>
@@ -136,7 +137,7 @@ export function ConsolePage() {
       </header>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2">
-        <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Level">
+        <div className="flex items-center gap-0.5 rounded-xl bg-muted p-1" role="radiogroup" aria-label={t("Level")}>
           {levels.map(([value, label, count]) => (
             <button
               key={value}
@@ -151,7 +152,7 @@ export function ConsolePage() {
                 level === value ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {label}
+              {t(label)}
               {count !== null ? <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-70">{count}</span> : null}
             </button>
           ))}
@@ -164,14 +165,14 @@ export function ConsolePage() {
               className="inline-flex h-9 items-center gap-2 rounded-xl px-2.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-muted aria-expanded:text-foreground"
             >
               <HugeiconsIcon icon={FilterIcon} strokeWidth={1.75} className="size-3.5" />
-              Sources
+              {t("Sources")}
               {hiddenSources.length ? (
-                <span className="rounded-md bg-warning/12 px-1.5 font-mono text-[11px] leading-5 text-warning">{hiddenSources.length} hidden</span>
+                <span className="rounded-md bg-warning/12 px-1.5 font-mono text-[11px] leading-5 text-warning">{t("{count} hidden", { count: hiddenSources.length })}</span>
               ) : null}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-80 w-60 rounded-xl">
-            <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">Show lines from</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-[11px] font-normal text-muted-foreground">{t("Show lines from")}</DropdownMenuLabel>
             {sources.map(([source, total]) => (
               <DropdownMenuCheckboxItem
                 key={source}
@@ -187,7 +188,7 @@ export function ConsolePage() {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={!hiddenSources.length} onSelect={() => setHiddenSources([])}>
-              Show all sources
+              {t("Show all sources")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -205,8 +206,8 @@ export function ConsolePage() {
                   event.currentTarget.blur()
                 }
               }}
-              placeholder="Search output"
-              aria-label="Search console output"
+              placeholder={t("Search output")}
+              aria-label={t("Search console output")}
               spellCheck={false}
               className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
             />
@@ -223,7 +224,7 @@ export function ConsolePage() {
                 type="button"
                 onClick={() => changeFollowing(!following)}
                 aria-pressed={!following}
-                aria-label={following ? "Pause auto scroll" : "Follow new lines"}
+                aria-label={following ? t("Pause auto scroll") : t("Follow new lines")}
                 className={cn(ICON_BUTTON, "flex h-8 w-auto gap-1.5 px-2.5 text-xs", !following && "bg-muted text-foreground")}
               >
                 <IconSwap
@@ -233,31 +234,31 @@ export function ConsolePage() {
                 />
                 <span className="inline-grid">
                   <span aria-hidden className="invisible col-start-1 row-start-1">
-                    Follow
+                    {t("Follow")}
                   </span>
                   <TextSwap text={following ? "Pause" : "Follow"} className="col-start-1 row-start-1" />
                 </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent>{following ? "Stop auto scroll" : "Jump to the newest line"}</TooltipContent>
+            <TooltipContent>{following ? "Stop auto scroll" : t("Jump to the newest line")}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" onClick={clear} disabled={!lines.length} aria-label="Clear view" className={ICON_BUTTON}>
+              <button type="button" onClick={clear} disabled={!lines.length} aria-label={t("Clear view")} className={ICON_BUTTON}>
                 <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.75} className="size-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Clear view</TooltipContent>
+            <TooltipContent>{t("Clear view")}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" onClick={() => downloadLog(lines)} disabled={!lines.length} aria-label="Download log" className={ICON_BUTTON}>
+              <button type="button" onClick={() => downloadLog(lines)} disabled={!lines.length} aria-label={t("Download log")} className={ICON_BUTTON}>
                 <HugeiconsIcon icon={Download04Icon} strokeWidth={1.75} className="size-4" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Download log</TooltipContent>
+            <TooltipContent>{t("Download log")}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -270,10 +271,10 @@ export function ConsolePage() {
         newCount={newCount}
         empty={
           lines.length === 0 ? (
-            <p className="text-xs text-muted-foreground">View cleared. New lines will show up here.</p>
+            <p className="text-xs text-muted-foreground">{t("View cleared. New lines will show up here.")}</p>
           ) : (
             <div>
-              <p className="text-xs text-muted-foreground">No lines match these filters.</p>
+              <p className="text-xs text-muted-foreground">{t("No lines match these filters.")}</p>
               {filtersActive ? (
                 <button
                   type="button"

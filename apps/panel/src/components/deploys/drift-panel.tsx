@@ -10,6 +10,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { changedPaths } from "@/lib/deploys"
 import { formatAgo } from "@/lib/mock"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const STATE_LABEL = { modified: "edited", added: "added", deleted: "deleted", untracked: "new file" }
 
@@ -25,7 +26,7 @@ export function DriftPanel() {
   const resources = [...new Set(drift.map((entry) => entry.resource))]
 
   return (
-    <section aria-label="Edited on the server" className="border-b border-border/70 bg-warning/5">
+    <section aria-label={t("Edited on the server")} className="border-b border-border/70 bg-warning/5">
       <div className="flex items-center gap-3 px-4 py-2.5">
         <HugeiconsIcon icon={Alert02Icon} strokeWidth={1.75} className="size-4 shrink-0 text-warning" />
         <div className="min-w-0 flex-1 text-xs">
@@ -42,13 +43,13 @@ export function DriftPanel() {
           onClick={() => setConfirming(true)}
           className="press inline-flex h-8 shrink-0 items-center rounded-lg border border-border px-2.5 text-xs font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Discard edits
+          {t("Discard edits")}
         </button>
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          aria-label={open ? "Hide the edited files" : "Show the edited files"}
+          aria-label={open ? t("Hide the edited files") : t("Show the edited files")}
           className="press grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <HugeiconsIcon
@@ -88,7 +89,7 @@ export function DriftPanel() {
           <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" autoFocus className="h-8 rounded-lg px-3">
-                Cancel
+                {t("Cancel")}
               </Button>
             </DialogClose>
             <Button
@@ -98,7 +99,7 @@ export function DriftPanel() {
               }}
               className="h-8 rounded-lg bg-destructive px-3 text-white hover:bg-destructive/85 dark:text-white"
             >
-              Discard edits
+              {t("Discard edits")}
             </Button>
           </DialogFooter>
         </DialogContent>

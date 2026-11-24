@@ -6,11 +6,12 @@ import { Moon02Icon, Sun03Icon } from "@hugeicons/core-free-icons"
 import { handleRadioKeyDown } from "@/lib/radio-group"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme()
   return (
-    <div className={cn("flex items-center gap-0.5 rounded-full bg-muted p-0.5", className)} role="radiogroup" aria-label="Theme">
+    <div className={cn("flex items-center gap-0.5 rounded-full bg-muted p-0.5", className)} role="radiogroup" aria-label={t("Theme")}>
       {(["light", "dark"] as const).map((value) => (
         <button
           key={value}
@@ -18,7 +19,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           role="radio"
           aria-checked={theme === value}
           tabIndex={theme === value ? 0 : -1}
-          aria-label={value === "light" ? "Light theme" : "Dark theme"}
+          aria-label={value === "light" ? t("Light theme") : t("Dark theme")}
           onClick={() => setTheme(value)}
           onKeyDown={handleRadioKeyDown}
           className={cn(

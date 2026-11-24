@@ -6,6 +6,7 @@ import { LockIcon } from "@hugeicons/core-free-icons"
 
 import { canRun, REGISTERED_COMMANDS, type RegisteredCommand, type Role } from "@/lib/console-data"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const MAX_SUGGESTIONS = 7
 const MAX_HISTORY = 50
@@ -97,7 +98,7 @@ export function CommandInput({ onRun, role, blockedReason }: { onRun: (value: st
           <ul
             id={listId}
             role="listbox"
-            aria-label="Commands"
+            aria-label={t("Commands")}
             className="absolute bottom-full left-0 z-20 mb-2 w-full max-w-md rounded-xl border border-border/70 bg-popover p-1 shadow-lg shadow-black/5"
           >
             {suggestions.map((command, index) => {
@@ -151,12 +152,12 @@ export function CommandInput({ onRun, role, blockedReason }: { onRun: (value: st
             onBlur={() => setDismissed(true)}
             disabled={disabled}
             role="combobox"
-            aria-label="Run a command"
+            aria-label={t("Run a command")}
             aria-expanded={open}
             aria-controls={open ? listId : undefined}
             aria-activedescendant={open && active ? `${listId}-${active.name}` : undefined}
             aria-autocomplete="list"
-            placeholder={blockedReason ?? "Run a command"}
+            placeholder={blockedReason ?? t("Run a command")}
             spellCheck={false}
             autoComplete="off"
             className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-foreground outline-none placeholder:font-sans placeholder:text-sm placeholder:text-muted-foreground"

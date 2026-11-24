@@ -3,6 +3,7 @@
 import { STATUS_META, type ServerStatus } from "@/components/live-server"
 import { TextSwap } from "@/components/motion-primitives"
 import { cn } from "@/lib/utils"
+import { t } from "@/lib/i18n"
 
 const TONE_STYLES = {
   success: { badge: "bg-success/12 text-success", dot: "bg-success" },
@@ -25,7 +26,7 @@ export function StatusBadge({
   return (
     <span className={cn("inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium", tone.badge, className)}>
       <span className={cn("size-1.5 rounded-full", tone.dot)} />
-      <TextSwap text={label} />
+      <TextSwap text={t(label)} />
     </span>
   )
 }
