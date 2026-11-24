@@ -100,12 +100,12 @@ export function ServerControls() {
           </DialogHeader>
           <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button variant="outline" className="h-8 rounded-lg px-3">
+              <Button variant="outline" autoFocus={confirm === "stop"} className="h-8 rounded-lg px-3">
                 Cancel
               </Button>
             </DialogClose>
             <Button
-              autoFocus
+              autoFocus={confirm !== "stop"}
               onClick={handleConfirm}
               className={cn(
                 "h-8 rounded-lg px-3",
