@@ -11,3 +11,4 @@ next-env.d.ts
 *.pem
 .DS_Store
 .claude
+dist

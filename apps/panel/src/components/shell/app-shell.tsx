@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu01Icon } from "@hugeicons/core-free-icons"
 
-import { AgentProvider } from "@/components/agent-store"
+import { AgentProvider, useAgent } from "@/components/agent-store"
 import { ArgusMark } from "@/components/argus-mark"
 import { ConsoleProvider } from "@/components/console-store"
 import { DeploysProvider } from "@/components/deploys-store"
@@ -12,6 +12,7 @@ import { PlayersProvider } from "@/components/players-store"
 import { LiveServerProvider } from "@/components/live-server"
 import { ResourcesProvider } from "@/components/resources-store"
 import { ServerName, SettingsProvider } from "@/components/settings-store"
+import { SetupWizard } from "@/components/setup/setup-wizard"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
@@ -90,17 +91,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 function ServerProviders({ children }: { children: ReactNode }) {
   return (
     <AgentProvider>
-      <SettingsProvider>
-        <LiveServerProvider>
-          <ResourcesProvider>
-            <ConsoleProvider>
-              <PlayersProvider>
-                <DeploysProvider>{children}</DeploysProvider>
-              </PlayersProvider>
-            </ConsoleProvider>
-          </ResourcesProvider>
-        </LiveServerProvider>
-      </SettingsProvider>
+      <SetupGate>
+        <SettingsProvider>
+          <LiveServerProvider>
+            <ResourcesProvider>
+              <ConsoleProvider>
+                <PlayersProvider>
+                  <DeploysProvider>{children}</DeploysProvider>
+                </PlayersProvider>
+              </ConsoleProvider>
+            </ResourcesProvider>
+          </LiveServerProvider>
+        </SettingsProvider>
+      </SetupGate>
     </AgentProvider>
   )
+}
+
+function SetupGate({ children }: { children: ReactNode }) {
+  const { mode } = useAgent()
+  if (mode === "setup") return <SetupWizard />
+  return <>{children}</>
 }

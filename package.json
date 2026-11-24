@@ -14,6 +14,7 @@
   "scripts": {
     "setup": "npm install --prefix apps/agent && npm install --prefix apps/panel && npm run build --prefix apps/panel",
     "argus": "node apps/agent/bin/argus.mjs",
-    "test": "npm test --prefix apps/agent"
+    "test": "npm test --prefix apps/agent",
+    "build:exe": "npm run build --prefix apps/panel && node apps/agent/scripts/build-exe.mjs"
   }
 }

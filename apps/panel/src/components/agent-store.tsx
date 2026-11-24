@@ -35,7 +35,7 @@ type AgentServer = {
 
 type AgentStateResponse = AgentServer & { lines: AgentLine[]; problems: AgentProblem[] }
 
-export type AgentMode = "connecting" | "live" | "demo"
+export type AgentMode = "connecting" | "setup" | "live" | "demo"
 
 type AgentStore = {
   mode: AgentMode
@@ -47,6 +47,7 @@ type AgentStore = {
 }
 
 const MAX_LINES = 2000
+const AGENT_ORIGIN = process.env.NEXT_PUBLIC_ARGUS_AGENT ?? ""
 const RETRY_MS = 3000
 
 export class AgentError extends Error {
@@ -59,7 +60,7 @@ export class AgentError extends Error {
 }
 
 export async function agentCall<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`/api/agent/${path}`, {
+  const response = await fetch(`${AGENT_ORIGIN}/api/${path}`, {
     method,
     headers: { "content-type": "application/json", "x-argus": "1" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -118,7 +119,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
     const listen = () => {
       source?.close()
-      source = new EventSource("/api/agent/events")
+      source = new EventSource(`${AGENT_ORIGIN}/api/events`)
       const read = <T,>(event: Event) => JSON.parse((event as MessageEvent<string>).data) as T
       source.addEventListener("line", (event) => append([read<AgentLine>(event)]))
       source.addEventListener("status", (event) => {
@@ -157,8 +158,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         setProblems(state.problems)
         append(state.lines)
         listen()
-      } catch {
+      } catch (error) {
         if (disposed) return
+        if (error instanceof AgentError && error.status === 409) {
+          setReachable(true)
+          setMode("setup")
+          return
+        }
         setReachable(false)
         if (everLive) scheduleRetry()
         else setMode("demo")

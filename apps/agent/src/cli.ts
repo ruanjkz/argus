@@ -19,7 +19,7 @@ import {
   installResource,
   type Check
 } from "./install.ts"
-import { startArgus, VERSION } from "./runtime.ts"
+import { FAKE_SERVER_ENV, startArgus, VERSION } from "./runtime.ts"
 
 const BOLD = "\u001b[1m"
 const DIM = "\u001b[2m"
@@ -59,13 +59,14 @@ const help = () => {
   console.log(`
   ${BOLD}argus${RESET} ${VERSION}  FiveM server manager
 
-  ${BOLD}argus init${RESET}      Link Argus to your FXServer. Asks two questions.
-  ${BOLD}argus start${RESET}     Start the panel, the agent and your server.
+  ${BOLD}argus${RESET}           Start Argus. The first time, it opens the setup in your browser.
+  ${BOLD}argus init${RESET}      Set up from the terminal instead. Asks two questions.
+  ${BOLD}argus start${RESET}     Same as argus.
   ${BOLD}argus doctor${RESET}    Check that everything Argus needs is in place.
 
   ${DIM}init     --data <folder> --fxserver <path> --name <name> --yes${RESET}
   ${DIM}start    --simulate  runs a fake FXServer, nothing touches your server${RESET}
-  ${DIM}         --no-panel  --verbose${RESET}
+  ${DIM}         --no-open   does not open the browser  --verbose${RESET}
   ${DIM}Config lives in ${argusFilePath()}. Set ARGUS_HOME to move it.${RESET}
 `)
 }
@@ -227,7 +228,6 @@ const doctor = async () => {
       rows.push([existsSync(join(file.settings.dataFolder, "resources", "[argus]", "argus", "fxmanifest.lua")), "argus resource installed", "Run argus init again."])
       rows.push([hasEnsure(file.settings.dataFolder, file.settings.configFile), "server.cfg ensures argus", "Add ensure argus to server.cfg."])
     }
-    rows.push([(await portFree(file.agentPort)) ? true : "warn", `Port ${file.agentPort} free for the agent`, "Something already uses it. Is Argus running?"])
     rows.push([(await portFree(file.panelPort)) ? true : "warn", `Port ${file.panelPort} free for the panel`, "Something already uses it. Is Argus running?"])
   }
 
@@ -242,7 +242,8 @@ const doctor = async () => {
 }
 
 const main = async () => {
-  const [command = "help", ...rest] = process.argv.slice(2)
+  const args = process.argv.slice(2)
+  const [command = "start", ...rest] = args[0]?.startsWith("--") && !["--help", "--version"].includes(args[0]) ? ["start", ...args] : args
   const flags = parseFlags(rest)
   switch (command) {
     case "init":
@@ -251,7 +252,7 @@ const main = async () => {
       return doctor()
     case "start":
       return NodeRuntime.runMain(
-        startArgus({ home: argusHome(), simulate: flags.has("simulate"), panel: !flags.has("no-panel"), verbose: flags.has("verbose") }).pipe(
+        startArgus({ home: argusHome(), simulate: flags.has("simulate"), open: !flags.has("no-open"), verbose: flags.has("verbose") }).pipe(
           Effect.catch((error) => Effect.sync(() => {
             console.log(`\n  ${FAIL} ${error instanceof Error ? error.message : String(error)}\n`)
             process.exitCode = 1
@@ -261,9 +262,20 @@ const main = async () => {
     case "version":
     case "--version":
       return console.log(VERSION)
+    case "help":
+    case "--help":
+      return help()
     default:
+      console.log(`\n  ${FAIL} Unknown command ${command}`)
       return help()
   }
 }
 
-await main()
+if (process.env[FAKE_SERVER_ENV]) {
+  void import("../fixtures/fake-fxserver.mjs")
+} else {
+  main().catch((error: unknown) => {
+    console.log(`\n  ${FAIL} ${error instanceof Error ? error.message : String(error)}\n`)
+    process.exitCode = 1
+  })
+}

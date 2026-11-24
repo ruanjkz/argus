@@ -1,9 +1,8 @@
-import { timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
+import type { IncomingMessage, ServerResponse } from "node:http"
 import { join } from "node:path"
 
-import { Context, Effect, Fiber, Layer, Option, Stream } from "effect"
+import { Effect, Fiber, Option, Stream } from "effect"
 
 import { Diagnostics } from "../diagnostics/service.ts"
 import type { ServerStatus, SupervisorEvent } from "../domain.ts"
@@ -12,8 +11,8 @@ import { parseRemote } from "../git/remote.ts"
 import { Repository } from "../git/repository.ts"
 import { readArgusFile, writeArgusFile, type ArgusFile, type PanelSettings } from "../home.ts"
 import { Supervisor } from "../supervisor.ts"
+import { HttpError, readBody, send, type Handler } from "./host.ts"
 
-const MAX_BODY_BYTES = 64 * 1024
 const HISTORY_LINES = 1000
 const KEEP_ALIVE_MS = 15_000
 const MAX_CLIENTS_PATTERN = /^\s*sv_maxclients\s+(\d+)/m
@@ -28,57 +27,11 @@ const maxPlayersOf = (settings: PanelSettings) => {
 }
 
 export interface ApiOptions {
-  readonly port: number
-  readonly token: string
   readonly home: string
   readonly version: string
 }
 
-class HttpError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message)
-  }
-}
-
-const send = (response: ServerResponse, status: number, body: unknown) => {
-  response.writeHead(status, { "content-type": "application/json", "cache-control": "no-store" })
-  response.end(JSON.stringify(body))
-}
-
-const readBody = (request: IncomingMessage) =>
-  new Promise<Record<string, unknown>>((resolve, reject) => {
-    const chunks: Array<Buffer> = []
-    let size = 0
-    request.on("data", (chunk: Buffer) => {
-      size += chunk.length
-      if (size > MAX_BODY_BYTES) {
-        reject(new HttpError(413, "Body too large"))
-        request.destroy()
-        return
-      }
-      chunks.push(chunk)
-    })
-    request.on("end", () => {
-      if (size === 0) return resolve({})
-      try {
-        const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"))
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("not an object")
-        resolve(parsed as Record<string, unknown>)
-      } catch {
-        reject(new HttpError(400, "Body must be a JSON object"))
-      }
-    })
-    request.on("error", reject)
-  })
-
-const authorized = (request: IncomingMessage, token: string) => {
-  const header = request.headers.authorization ?? ""
-  const given = Buffer.from(header.startsWith("Bearer ") ? header.slice(7) : "")
-  const expected = Buffer.from(token)
-  return given.length === expected.length && timingSafeEqual(given, expected)
-}
-
-const make = (options: ApiOptions) =>
+export const makeApiHandler = (options: ApiOptions) =>
   Effect.gen(function*() {
     const supervisor = yield* Supervisor
     const diagnostics = yield* Diagnostics
@@ -177,109 +130,101 @@ const make = (options: ApiOptions) =>
       }
     }
 
-    const handle = async (request: IncomingMessage, response: ServerResponse) => {
-      const url = new URL(request.url ?? "/", "http://localhost")
-      const route = `${request.method ?? "GET"} ${url.pathname}`
-      if (route === "GET /api/health") return send(response, 200, { ok: true, version: options.version })
-      if (!authorized(request, options.token)) throw new HttpError(401, "Missing or wrong token")
-
+    const handle: Handler = async (request: IncomingMessage, response: ServerResponse, route: string) => {
       switch (route) {
-        case "GET /api/state":
-          return send(response, 200, await state())
-        case "GET /api/events":
-          return events(request, response)
-        case "POST /api/server/start":
+        case "GET /setup":
+          send(response, 200, { configured: true })
+          return true
+        case "GET /state":
+          send(response, 200, await state())
+          return true
+        case "GET /events":
+          events(request, response)
+          return true
+        case "POST /server/start":
           await run(supervisor.start)
-          return send(response, 202, { ok: true })
-        case "POST /api/server/stop":
+          send(response, 202, { ok: true })
+          return true
+        case "POST /server/stop":
           await run(supervisor.stop)
-          return send(response, 202, { ok: true })
-        case "POST /api/server/restart":
+          send(response, 202, { ok: true })
+          return true
+        case "POST /server/restart":
           await run(supervisor.restart)
-          return send(response, 202, { ok: true })
-        case "POST /api/command": {
+          send(response, 202, { ok: true })
+          return true
+        case "POST /command": {
           const body = await readBody(request)
           const command = typeof body.command === "string" ? body.command.trim() : ""
           if (!command) throw new HttpError(400, "Send a command")
           const result = await run(Effect.result(supervisor.send(command)))
           if (result._tag === "Failure") throw new HttpError(409, `Server is ${result.failure.status}`)
-          return send(response, 202, { ok: true })
+          send(response, 202, { ok: true })
+          return true
         }
-        case "GET /api/problems":
-          return send(response, 200, await run(diagnostics.problems))
-        case "GET /api/settings":
-          return send(response, 200, loadFile().settings)
-        case "PUT /api/settings": {
+        case "GET /problems":
+          send(response, 200, await run(diagnostics.problems))
+          return true
+        case "GET /settings":
+          send(response, 200, loadFile().settings)
+          return true
+        case "PUT /settings": {
           const body = await readBody(request)
           const file = loadFile()
           const next = { ...file.settings, ...(body as Partial<PanelSettings>) }
           writeArgusFile({ ...file, settings: next }, options.home)
-          return send(response, 200, next)
+          send(response, 200, next)
+          return true
         }
-        case "GET /api/git":
-          return send(response, 200, await gitState())
-        case "POST /api/git/key": {
+        case "GET /git":
+          send(response, 200, await gitState())
+          return true
+        case "POST /git/key": {
           const file = loadFile()
           const key = await run(Effect.result(connection.deployKey(`argus-${file.settings.name}`)))
           if (key._tag === "Failure") throw new HttpError(500, key.failure.message)
-          return send(response, 200, { publicKey: key.success.publicKey, fingerprint: key.success.fingerprint })
+          send(response, 200, { publicKey: key.success.publicKey, fingerprint: key.success.fingerprint })
+          return true
         }
-        case "POST /api/git/test": {
+        case "POST /git/test": {
           const body = await readBody(request)
           const remote = typeof body.url === "string" ? parseRemote(body.url) : undefined
           if (!remote) throw new HttpError(400, "That is not a repository link")
           const file = loadFile()
           const result = await run(Effect.result(connection.test(remote.sshUrl, `argus-${file.settings.name}`)))
-          if (result._tag === "Success") return send(response, 200, { ok: true, remote, branches: result.success })
+          if (result._tag === "Success") {
+            send(response, 200, { ok: true, remote, branches: result.success })
+            return true
+          }
           const failure = result.failure
-          return send(response, 200, {
+          send(response, 200, {
             ok: false,
             remote,
             reason: failure._tag === "ConnectionRefused" ? failure.reason : "unknown",
             detail: failure._tag === "ConnectionRefused" ? failure.detail : failure.message
           })
+          return true
         }
-        case "PUT /api/git": {
+        case "PUT /git": {
           const body = await readBody(request)
           const file = loadFile()
           if (body.url === null) {
             writeArgusFile({ ...file, repository: null }, options.home)
-            return send(response, 200, { connected: false })
+            send(response, 200, { connected: false })
+            return true
           }
           const remote = typeof body.url === "string" ? parseRemote(body.url) : undefined
           const branch = typeof body.branch === "string" && body.branch.trim() ? body.branch.trim() : undefined
           if (!remote || !branch) throw new HttpError(400, "Send a repository link and a branch")
           writeArgusFile({ ...file, repository: { url: remote.sshUrl, branch } }, options.home)
-          return send(response, 200, await gitState())
+          send(response, 200, await gitState())
+          return true
         }
         default:
-          throw new HttpError(404, "Not found")
+          return false
       }
     }
 
-    const server = createServer((request, response) => {
-      handle(request, response).catch((error: unknown) => {
-        if (response.headersSent) return response.end()
-        if (error instanceof HttpError) return send(response, error.status, { error: error.message })
-        return send(response, 500, { error: error instanceof Error ? error.message : "Unexpected error" })
-      })
-    })
-
-    yield* Effect.acquireRelease(
-      Effect.callback<void, Error>((resume) => {
-        server.once("error", (error) => resume(Effect.fail(error)))
-        server.listen(options.port, "127.0.0.1", () => resume(Effect.void))
-      }),
-      () =>
-        Effect.callback<void>((resume) => {
-          server.closeAllConnections()
-          server.close(() => resume(Effect.void))
-        })
-    )
-
-    return { port: options.port }
+    return handle
   })
 
-export class AgentApi extends Context.Service<AgentApi, { readonly port: number }>()("argus/agent/AgentApi") {
-  static readonly layer = (options: ApiOptions) => Layer.effect(AgentApi, make(options))
-}
