@@ -8,7 +8,8 @@ An open source server manager for FiveM, inspired by txAdmin. Early development:
 | --- | --- |
 | `apps/agent` | FXServer supervisor built with [Effect](https://effect.website) |
 | `apps/panel` | Admin panel UI (Next.js, mocked data for now) |
-| `apps/web` | Landing page (Next.js) |
+
+The landing page lives in [argus-site](https://github.com/ruanjkz/argus-site).
 
 ## Agent
 
@@ -43,15 +44,13 @@ Tests use the simulated server, so they never touch a real FiveM install:
 npm test
 ```
 
-## Panel and landing
+## Panel
 
 ```bash
 cd apps/panel
 npm install
-npm run dev
+npm run dev -- --port 3200
 ```
-
-The landing page in `apps/web` runs the same way.
 
 ## License
 
